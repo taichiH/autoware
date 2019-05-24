@@ -18,8 +18,6 @@
 ros::Publisher maskImagePublisher;
 ros::Publisher roiImageArrayPublisher;
 
-int width_ = 200;
-int height_ = 100;
 
 void callback(const sensor_msgs::Image::ConstPtr& inImageMsg,
               const autoware_msgs::Signals::ConstPtr& signalMsg)
@@ -44,6 +42,9 @@ void callback(const sensor_msgs::Image::ConstPtr& inImageMsg,
       // ROS_WARN("outside of image");
       continue;
     }
+
+    int width_ = 200;
+    int height_ = 100;
 
     cv::Point lt = cv::Point(int(signal.u) - width_ * 0.5, int(signal.v) - height_ * 0.5);
     cv::Point rb = cv::Point(int(signal.u) + width_ * 0.5, int(signal.v) + height_ * 0.5);
