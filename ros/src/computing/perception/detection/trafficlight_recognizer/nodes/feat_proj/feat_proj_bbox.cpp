@@ -7,15 +7,18 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/synchronizer.h>
-#include <message_filters/sync_policies/approximate_time.h> 
+#include <message_filters/sync_policies/approximate_time.h>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
+#include <autoware_msgs/DetectedObject.h>
+#include <autoware_msgs/DetectedObjectArray.h>
 
 ros::Publisher maskImagePublisher;
+ros::Publisher roiImageArrayPublisher;
 
-int width_ = 100;
+int width_ = 200;
 int height_ = 100;
 
 void callback(const sensor_msgs::Image::ConstPtr& inImageMsg,
@@ -32,19 +35,43 @@ void callback(const sensor_msgs::Image::ConstPtr& inImageMsg,
       ROS_ERROR("Could not convert from '%s' to 'bgr8'.", inImageMsg->encoding.c_str());
       return;
     }
-
   cv::Mat mask = cv::Mat::zeros(image.rows, image.cols, CV_8UC1);
 
-  for (auto signal : signalMsg->Signals)
-    {
-      cv::Point lt = cv::Point(int(signal.u) - width_ * 0.5, int(signal.v) - height_ * 0.5);
-      cv::Point rb = cv::Point(int(signal.u) + width_ * 0.5, int(signal.v) + height_ * 0.5);
-      cv::rectangle(mask, lt, rb, cv::Scalar(255, 255, 255), -1, CV_AA);
+  autoware_msgs::DetectedObjectArray roiImageArray;
+  for (auto signal : signalMsg->Signals) {
+    if (int(signal.u) < 0 || int(signal.u) > image.cols ||
+        int(signal.v) < 0 || int(signal.v) > image.rows) {
+      // ROS_WARN("outside of image");
+      continue;
     }
+
+    cv::Point lt = cv::Point(int(signal.u) - width_ * 0.5, int(signal.v) - height_ * 0.5);
+    cv::Point rb = cv::Point(int(signal.u) + width_ * 0.5, int(signal.v) + height_ * 0.5);
+    cv::rectangle(mask, lt, rb, cv::Scalar(255, 255, 255), -1, CV_AA);
+
+    if (rb.x > image.cols)  width_ = image.cols - lt.x;
+    if (rb.y > image.rows)  height_ = image.rows - lt.y;
+    if (lt.x < 0)  lt.x = 0;
+    if (lt.y < 0) lt.y = 0;
+
+    cv::Rect roi{lt.x, lt.y, width_, height_};
+    cv::Mat roi_image = image(roi);
+    sensor_msgs::ImagePtr roiMsg =
+      cv_bridge::CvImage(inImageMsg->header, "rgb8", roi_image).toImageMsg();
+    autoware_msgs::DetectedObject roiImage;
+    roiImage.roi_image = *roiMsg;
+    roiImage.image_frame = inImageMsg->header.frame_id;
+    roiImage.x = lt.x;
+    roiImage.y = lt.y;
+    roiImage.width = rb.x;
+    roiImage.height = rb.y;
+    roiImageArray.objects.push_back(roiImage);
+  }
 
   sensor_msgs::ImagePtr outImageMsg =
     cv_bridge::CvImage(inImageMsg->header, "mono8", mask).toImageMsg();
   maskImagePublisher.publish(outImageMsg);
+  roiImageArrayPublisher.publish(roiImageArray);
 }
 
 
@@ -65,6 +92,7 @@ int main(int argc, char *argv[])
   private_nh.param<std::string>("input_image", inputImageTopic, "/image_raw");
 
   maskImagePublisher = rosnode.advertise<sensor_msgs::Image>("/feat_proj_bbox/output", 100);
+  roiImageArrayPublisher = rosnode.advertise<autoware_msgs::DetectedObjectArray>("/feat_proj_bbox/output/roi_image_array", 100);
 
   message_filters::Subscriber<sensor_msgs::Image> sub_input_image;
   message_filters::Subscriber<autoware_msgs::Signals> sub_input_signal;
