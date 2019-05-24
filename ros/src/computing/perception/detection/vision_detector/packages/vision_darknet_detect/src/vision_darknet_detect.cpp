@@ -131,7 +131,7 @@ namespace darknet
                 detection.h = darknet_detections[i].bbox.h;
                 detection.score = score;
                 detection.class_type = class_id;
-                //std::cout << detection.toString() << std::endl;
+                std::cout << detection.toString() << std::endl;
 
                 detections.push_back(detection);
             }
@@ -249,6 +249,8 @@ image Yolo3DetectorNode::convert_ipl_to_image(const sensor_msgs::ImageConstPtr& 
 
 void Yolo3DetectorNode::image_callback(const sensor_msgs::ImageConstPtr& in_image_message)
 {
+  return;
+
     std::vector< RectClassScore<float> > detections;
 
     darknet_image_ = convert_ipl_to_image(in_image_message);
@@ -264,6 +266,30 @@ void Yolo3DetectorNode::image_callback(const sensor_msgs::ImageConstPtr& in_imag
     publisher_objects_.publish(output_message);
 
     free(darknet_image_.data);
+}
+
+void Yolo3DetectorNode::image_array_callback(const autoware_msgs::DetectedObjectArray::ConstPtr& in_image_array_message)
+{
+  std::cerr << " ------------  image_array_callback" << std::endl;
+
+  //Prepare Output message
+  autoware_msgs::DetectedObjectArray output_message;
+  output_message.header = in_image_array_message->header;
+  for (auto obj : in_image_array_message->objects) {
+    std::vector< RectClassScore<float> > detections;
+
+    boost::shared_ptr<sensor_msgs::Image> roi_image_ptr =
+      boost::make_shared<sensor_msgs::Image>(obj.roi_image);
+    darknet_image_ = convert_ipl_to_image(roi_image_ptr);
+
+    detections = yolo_detector_.detect(darknet_image_);
+    free(darknet_image_.data);
+
+    
+
+    convert_rect_to_image_obj(detections, output_message);
+  }
+  publisher_objects_.publish(output_message);
 }
 
 void Yolo3DetectorNode::config_cb(const autoware_config_msgs::ConfigSSD::ConstPtr& param)
@@ -299,6 +325,17 @@ void Yolo3DetectorNode::Run()
     {
         ROS_INFO("No image node received, defaulting to /image_raw, you can use _image_raw_node:=YOUR_TOPIC");
         image_raw_topic_str = "/image_raw";
+    }
+
+    std::string image_array_topic_str;
+    if (private_node_handle.getParam("image_array_node", image_array_topic_str))
+    {
+        ROS_INFO("Setting image node to %s", image_array_topic_str.c_str());
+    }
+    else
+    {
+        ROS_INFO("No image array node received, defaulting to /image_array, you can use _image_array_node:=YOUR_TOPIC");
+        image_array_topic_str = "/image_array";
     }
 
     std::string network_definition_file;
@@ -355,6 +392,9 @@ void Yolo3DetectorNode::Run()
 
     ROS_INFO("Subscribing to... %s", image_raw_topic_str.c_str());
     subscriber_image_raw_ = node_handle_.subscribe(image_raw_topic_str, 1, &Yolo3DetectorNode::image_callback, this);
+
+    ROS_INFO("Subscribing to... %s", image_array_topic_str.c_str());
+    subscriber_image_array_ = node_handle_.subscribe(image_array_topic_str, 1, &Yolo3DetectorNode::image_array_callback, this);
 
     std::string config_topic("/config");
     config_topic += "/Yolo3";
