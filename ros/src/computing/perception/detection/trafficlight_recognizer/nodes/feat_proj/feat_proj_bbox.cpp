@@ -16,8 +16,16 @@
 #include <autoware_msgs/DetectedObjectArray.h>
 
 ros::Publisher maskImagePublisher;
+ros::Publisher nearestRoiImagePublisher;
+
 ros::Publisher roiImageArrayPublisher;
 
+float z_max = 100;
+float z_min = 20;
+int w_max = 350;
+int w_min = 50;
+int h_max = 200;
+int h_min = 50;
 
 void callback(const sensor_msgs::Image::ConstPtr& inImageMsg,
               const autoware_msgs::Signals::ConstPtr& signalMsg)
@@ -35,7 +43,11 @@ void callback(const sensor_msgs::Image::ConstPtr& inImageMsg,
     }
   cv::Mat mask = cv::Mat::zeros(image.rows, image.cols, CV_8UC1);
 
+  int index = 0;
+  int nearest_index = 0;
+  float prev_z = 256 *256;
   autoware_msgs::DetectedObjectArray roiImageArray;
+
   for (auto signal : signalMsg->Signals) {
     if (int(signal.u) < 0 || int(signal.u) > image.cols ||
         int(signal.v) < 0 || int(signal.v) > image.rows) {
@@ -43,8 +55,15 @@ void callback(const sensor_msgs::Image::ConstPtr& inImageMsg,
       continue;
     }
 
-    int width_ = 200;
-    int height_ = 100;
+    float z_diff = z_max - z_min;
+    int w_diff = w_max - w_min;
+    int h_diff = h_max - h_min;
+    float z = float(signal.z);
+    if (z > z_max) z = z_max;
+    if (z < z_min) z = z_min;
+
+    int width_ = w_min + (z_max - z) * w_diff / z_diff;
+    int height_ = h_min + (z_max - z) * h_diff / z_diff;
 
     cv::Point lt = cv::Point(int(signal.u) - width_ * 0.5, int(signal.v) - height_ * 0.5);
     cv::Point rb = cv::Point(int(signal.u) + width_ * 0.5, int(signal.v) + height_ * 0.5);
@@ -57,21 +76,34 @@ void callback(const sensor_msgs::Image::ConstPtr& inImageMsg,
 
     cv::Rect roi{lt.x, lt.y, width_, height_};
     cv::Mat roi_image = image(roi);
+
     sensor_msgs::ImagePtr roiMsg =
       cv_bridge::CvImage(inImageMsg->header, "rgb8", roi_image).toImageMsg();
     autoware_msgs::DetectedObject roiImage;
+
     roiImage.roi_image = *roiMsg;
     roiImage.image_frame = inImageMsg->header.frame_id;
     roiImage.x = lt.x;
     roiImage.y = lt.y;
     roiImage.width = rb.x;
     roiImage.height = rb.y;
+    roiImage.pose.position.z = float(signal.z);
     roiImageArray.objects.push_back(roiImage);
+
+    if(z < prev_z){
+      nearest_index = index;
+      prev_z = z;
+    }
+    index++;
   }
 
   sensor_msgs::ImagePtr outImageMsg =
     cv_bridge::CvImage(inImageMsg->header, "mono8", mask).toImageMsg();
   maskImagePublisher.publish(outImageMsg);
+
+  if(roiImageArray.objects.size() > 0)
+    nearestRoiImagePublisher.publish(roiImageArray.objects.at(nearest_index).roi_image);
+
   roiImageArrayPublisher.publish(roiImageArray);
 }
 
@@ -89,10 +121,20 @@ int main(int argc, char *argv[])
 
   std::string inputSignalTopic;
   std::string inputImageTopic;
-  private_nh.param<std::string>("input_signal", inputSignalTopic, "/roi_singal");
+
+  // some bboxes are overlaped
+  private_nh.param<std::string>("input_signal", inputSignalTopic, "/roi_signal");
   private_nh.param<std::string>("input_image", inputImageTopic, "/image_raw");
+  private_nh.param<float>("z_max", z_max);
+  private_nh.param<float>("z_min", z_min);
+  private_nh.param<float>("w_max", w_max);
+  private_nh.param<float>("w_min", w_min);
+  private_nh.param<float>("h_max", h_max);
+  private_nh.param<float>("h_min", h_min);
+
 
   maskImagePublisher = rosnode.advertise<sensor_msgs::Image>("/feat_proj_bbox/output", 100);
+  nearestRoiImagePublisher = rosnode.advertise<sensor_msgs::Image>("/feat_proj_bbox/nearest_box", 100);
   roiImageArrayPublisher = rosnode.advertise<autoware_msgs::DetectedObjectArray>("/feat_proj_bbox/output/roi_image_array", 100);
 
   message_filters::Subscriber<sensor_msgs::Image> sub_input_image;
