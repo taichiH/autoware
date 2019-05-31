@@ -1,5 +1,5 @@
 <launch>
-  <arg name="input_signal" default="/roi_signal"/>
+  <arg name="input_signal" default="/roi_signal_proj"/>
   <arg name="input_image" default="/image_raw"/>
 
   <node pkg="trafficlight_recognizer" type="feat_proj_bbox" name="feature_projection_bbox" output="log">
