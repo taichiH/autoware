@@ -26,8 +26,11 @@ class ImageArrayToImage():
             img = bridge.imgmsg_to_cv2(obj.roi_image, desired_encoding='bgr8')
             y = obj.y
             x = obj.x
-            print(y, x)
+            z = obj.pose.position.z
             image[y:y+img.shape[0], x:x+img.shape[1]] = img
+            cv2.putText(
+                image,str(round(z, 2)), (x, y), cv2.FONT_HERSHEY_SIMPLEX,
+                1,(255,255,255),2,cv2.LINE_AA)
 
         vis_msg = bridge.cv2_to_imgmsg(image, encoding='bgr8')
         self.image_pub.publish(vis_msg)
