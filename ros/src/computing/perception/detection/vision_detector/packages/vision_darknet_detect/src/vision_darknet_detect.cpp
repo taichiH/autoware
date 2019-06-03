@@ -131,7 +131,7 @@ namespace darknet
                 detection.h = darknet_detections[i].bbox.h;
                 detection.score = score;
                 detection.class_type = class_id;
-                //std::cout << detection.toString() << std::endl;
+                // std::cout << detection.toString() << std::endl;
 
                 detections.push_back(detection);
             }
@@ -154,6 +154,51 @@ void Yolo3DetectorNode::convert_rect_to_image_obj(std::vector< RectClassScore<fl
             obj.y = (in_objects[i].y /image_ratio_) - image_top_bottom_border_/image_ratio_;
             obj.width = in_objects[i].w /image_ratio_;
             obj.height = in_objects[i].h /image_ratio_;
+            if (in_objects[i].x < 0)
+                obj.x = 0;
+            if (in_objects[i].y < 0)
+                obj.y = 0;
+            if (in_objects[i].w < 0)
+                obj.width = 0;
+            if (in_objects[i].h < 0)
+                obj.height = 0;
+
+            obj.score = in_objects[i].score;
+            if (use_coco_names_)
+            {
+                obj.label = in_objects[i].GetClassString();
+            }
+            else
+            {
+                if (in_objects[i].class_type < custom_names_.size())
+                    obj.label = custom_names_[in_objects[i].class_type];
+                else
+                    obj.label = "unknown";
+            }
+            obj.valid = true;
+
+            out_message.objects.push_back(obj);
+
+        }
+    }
+}
+
+void Yolo3DetectorNode::convert_rect_to_image_obj(std::vector< RectClassScore<float> >& in_objects,
+                                                  autoware_msgs::DetectedObject& in_obj,
+                                                  autoware_msgs::DetectedObjectArray& out_message)
+{
+    for (unsigned int i = 0; i < in_objects.size(); ++i)
+    {
+        {
+            autoware_msgs::DetectedObject obj;
+
+            obj.x = (in_objects[i].x /image_ratio_) - image_left_right_border_/image_ratio_;
+            obj.y = (in_objects[i].y /image_ratio_) - image_top_bottom_border_/image_ratio_;
+            obj.width = in_objects[i].w /image_ratio_;
+            obj.height = in_objects[i].h /image_ratio_;
+            obj.x = in_obj.x + obj.x;
+            obj.y = in_obj.y + obj.y;
+
             if (in_objects[i].x < 0)
                 obj.x = 0;
             if (in_objects[i].y < 0)
@@ -266,6 +311,26 @@ void Yolo3DetectorNode::image_callback(const sensor_msgs::ImageConstPtr& in_imag
     free(darknet_image_.data);
 }
 
+void Yolo3DetectorNode::image_array_callback(const autoware_msgs::DetectedObjectArray::ConstPtr& in_image_array_message)
+{
+  //Prepare Output message
+  autoware_msgs::DetectedObjectArray output_message;
+  output_message.header = in_image_array_message->header;
+  for (auto obj : in_image_array_message->objects) {
+    std::vector< RectClassScore<float> > detections;
+
+    boost::shared_ptr<sensor_msgs::Image> roi_image_ptr =
+      boost::make_shared<sensor_msgs::Image>(obj.roi_image);
+    darknet_array_image_ = convert_ipl_to_image(roi_image_ptr);
+
+    detections = yolo_detector_.detect(darknet_array_image_);
+    free(darknet_array_image_.data);
+
+    convert_rect_to_image_obj(detections, obj, output_message);
+  }
+  publisher_croped_objects_.publish(output_message);
+}
+
 void Yolo3DetectorNode::config_cb(const autoware_config_msgs::ConfigSSD::ConstPtr& param)
 {
     score_threshold_ = param->score_threshold;
@@ -301,6 +366,17 @@ void Yolo3DetectorNode::Run()
         image_raw_topic_str = "/image_raw";
     }
 
+    std::string image_array_topic_str;
+    if (private_node_handle.getParam("image_array_node", image_array_topic_str))
+    {
+        ROS_INFO("Setting image node to %s", image_array_topic_str.c_str());
+    }
+    else
+    {
+        ROS_INFO("No image array node received, defaulting to /image_array, you can use _image_array_node:=YOUR_TOPIC");
+        image_array_topic_str = "/image_array";
+    }
+
     std::string network_definition_file;
     std::string pretrained_model_file, names_file;
     if (private_node_handle.getParam("network_definition_file", network_definition_file))
@@ -334,10 +410,10 @@ void Yolo3DetectorNode::Run()
         use_coco_names_ = true;
     }
 
-    private_node_handle.param<float>("score_threshold", score_threshold_, 0.5);
+    private_node_handle.param<float>("score_threshold", score_threshold_, 0.3);
     ROS_INFO("[%s] score_threshold: %f",__APP_NAME__, score_threshold_);
 
-    private_node_handle.param<float>("nms_threshold", nms_threshold_, 0.45);
+    private_node_handle.param<float>("nms_threshold", nms_threshold_, 0.3);
     ROS_INFO("[%s] nms_threshold: %f",__APP_NAME__, nms_threshold_);
 
 
@@ -352,9 +428,13 @@ void Yolo3DetectorNode::Run()
     #endif
 
     publisher_objects_ = node_handle_.advertise<autoware_msgs::DetectedObjectArray>("/detection/image_detector/objects", 1);
+    publisher_croped_objects_ = node_handle_.advertise<autoware_msgs::DetectedObjectArray>("/detection/image_detector/croped_objects", 1);
 
     ROS_INFO("Subscribing to... %s", image_raw_topic_str.c_str());
     subscriber_image_raw_ = node_handle_.subscribe(image_raw_topic_str, 1, &Yolo3DetectorNode::image_callback, this);
+
+    ROS_INFO("Subscribing to... %s", image_array_topic_str.c_str());
+    subscriber_image_array_ = node_handle_.subscribe(image_array_topic_str, 1, &Yolo3DetectorNode::image_array_callback, this);
 
     std::string config_topic("/config");
     config_topic += "/Yolo3";

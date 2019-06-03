@@ -28,6 +28,7 @@ find_package(catkin REQUIRED COMPONENTS
         waypoint_follower
         autoware_msgs
         vector_map
+        image_transport
         )
 
 find_package(OpenCV REQUIRED)
@@ -63,7 +64,8 @@ include_directories(
         ${vector_map_INCLUDE_DIRS}
         ${autoware_msgs_INCLUDE_DIRS}
         ${Eigen3_INCLUDE_DIRS}
-)
+        ${Opencv_INCLUDE_DIRS}
+        )
 
 catkin_package(
         INCLUDE_DIRS ${EIGEN3_INCLUDE_DIRS}
@@ -81,7 +83,7 @@ catkin_package(
         vector_map_server
         visualization_msgs
         waypoint_follower
-
+        image_transport
         LIBRARIES libcontext
 )
 
@@ -126,12 +128,12 @@ add_dependencies(region_tlr
         )
 
 ### feat_proj ###
-include_directories(
-        ${catkin_INCLUDE_DIRS}
-        ${vector_map_INCLUDE_DIRS}
-        ${autoware_msgs_INCLUDE_DIRS}
-        ${Eigen3_INCLUDE_DIRS}
-)
+# include_directories(
+#         ${catkin_INCLUDE_DIRS}
+#         ${vector_map_INCLUDE_DIRS}
+#         ${autoware_msgs_INCLUDE_DIRS}
+#         ${Eigen3_INCLUDE_DIRS}
+# )
 
 add_executable(feat_proj
         nodes/feat_proj/feat_proj.cpp
@@ -143,6 +145,20 @@ target_link_libraries(feat_proj
         )
 
 add_dependencies(feat_proj
+        ${catkin_EXPORTED_TARGETS}
+        )
+
+### feat_proj_bbox ###
+add_executable(feat_proj_bbox
+        nodes/feat_proj/feat_proj_bbox.cpp
+        )
+
+target_link_libraries(feat_proj_bbox
+        ${catkin_LIBRARIES}
+        ${OpenCV_LIBRARIES}
+        )
+
+add_dependencies(feat_proj_bbox
         ${catkin_EXPORTED_TARGETS}
         )
 
