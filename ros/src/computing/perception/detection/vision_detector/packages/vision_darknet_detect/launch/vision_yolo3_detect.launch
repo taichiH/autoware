@@ -8,8 +8,8 @@
   <arg name="names_file" default="$(find vision_darknet_detect)/darknet/cfg/coco.names"/>
 
   <arg name="camera_id" default=""/>
-  <arg name="image_src" default="/image_raw"/>
-  <arg name="image_array_src" default="/feat_proj_bbox/output/roi_image_array"/>
+  <arg name="image_src" default="/feat_proj_bbox/nearest_box"/>
+  <arg name="image_array_src" default="/hoge"/>
 
   <node pkg="vision_darknet_detect" name="vision_darknet_detect" type="vision_darknet_detect" output="screen">
     <param name="network_definition_file" type="str" value="$(arg network_definition_file)"/>
