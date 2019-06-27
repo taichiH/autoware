@@ -1,0 +1,10 @@
+<library path="lib/libtrafficlight_recognizer">
+
+  <class name="trafficlight_recognizer/FeatProjBBox"
+         type="trafficlight_recognizer::FeatProjBBox"
+         base_class_type="nodelet::Nodelet">
+    <description>
+    </description>
+  </class>
+
+</library>
