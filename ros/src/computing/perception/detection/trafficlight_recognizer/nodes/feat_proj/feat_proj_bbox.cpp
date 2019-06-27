@@ -38,7 +38,7 @@ namespace trafficlight_recognizer
         cv::Mat vis_image;
         float prev_z = 256 *256;
 
-        autoware_msgs::DetectedObjectArray roiImageArray;
+        autoware_msgs::DetectedObjectArray roi_image_array;
         kcf_ros::Rect croped_image_rect;
         kcf_ros::Rect info_msg;
 
@@ -91,7 +91,11 @@ namespace trafficlight_recognizer
                 info_msg.y = lt.y;
                 info_msg.width = rb.x;
                 info_msg.height = rb.y;
-                // info_msg.score = signal.signalId;;
+                if (prev_signal != signal.signalId){
+                    info_msg.changed = true;
+                } else {
+                    info_msg.changed = false;
+                }
 
                 if(debug_){
                     vis_image = roi_image.clone();
@@ -109,13 +113,13 @@ namespace trafficlight_recognizer
                                                   "mono8",
                                                   mask).toImageMsg());
 
-        if(roiImageArray.objects.size() > 0){
-            nearest_roi_image_pub.publish(roiImageArray.objects.at(nearest_index).roi_image);
+        if(roi_image_array.objects.size() > 0){
+            nearest_roi_image_pub.publish(roi_image_array.objects.at(nearest_index).roi_image);
 
             if(debug_){
-                sensor_msgs::ImagePtr visImageMsg =
-                    cv_bridge::CvImage(in_image_msg->header, "rgb8", vis_image).toImageMsg();
-                visImagePublisher.publish(visImageMsg);
+                visImagePublisher.publish(cv_bridge::CvImage(in_image_msg->header,
+                                                             "rgb8",
+                                                             vis_image).toImageMsg());
             }
         }
     }
