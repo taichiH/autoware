@@ -1,33 +1,27 @@
+#!/usr/bin/env python
+
 import cv2
 import numpy as np
-
 import rospy
 import message_filters
 import cv_bridge
 
-from sensor_msgs.msg import Image
 from autoware_msgs.msg import DetectedObjectArray
 from autoware_msgs.msg import ImageRect
+from sensor_msgs.msg import Image
 
-class KcfTracking():
-
+class BoxPublisher():
+    
     def __init__(self):
         self.bridge = cv_bridge.CvBridge()
-        self.tracker = cv2.TrackerKCF_create()
-        # self.tracker = cv2.TrackerTLD_create()
-        self.prev_id = 0
-        self.rect_flag = False
-        self.missing_box = False
-        self.nearest_info = ImageRect()
-        self.prev_box = None
+        queue_size = rospy.get_param('~queue_size', 1)
 
         self.image_pub = rospy.Publisher(
-            '/kcf_tracking/output', Image, queue_size=1)
+            '/kcf_tracking/output', Image, queue_size=queue_size)
 
         rospy.Subscriber(
             '/feat_proj_bbox/nearest_info', ImageRect, self.image_rect_callback)
 
-        queue_size = rospy.get_param('~queue_size', 100)
         sub_nearest_image = message_filters.Subscriber(
             '/image_raw', Image, queue_size=queue_size)
         sub_box = message_filters.Subscriber(
@@ -51,8 +45,7 @@ class KcfTracking():
         if not self.rect_flag:
             return
 
-        br = self.bridge
-        image = br.imgmsg_to_cv2(imgmsg, desired_encoding='bgr8')
+        image = self.bridge.imgmsg_to_cv2(imgmsg, desired_encoding='bgr8')
 
         roi_x = self.nearest_info.x
         roi_y = self.nearest_info.y
@@ -98,13 +91,13 @@ class KcfTracking():
             self.missing_box = False
         else :
             cv2.putText(
-                image, "Failure", (10,50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1, cv2.LINE_AA)
+                image, "Failure", (10,50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 1, cv2.LINE_AA)
             self.missing_box = True
 
-        vis_msg = br.cv2_to_imgmsg(image, encoding='bgr8')
+        vis_msg = self.bridge.cv2_to_imgmsg(image, encoding='bgr8')
         self.image_pub.publish(vis_msg)
 
 if __name__ == '__main__':
-    rospy.init_node('kcf_tracking')
-    kcf_tracking = KcfTracking()
+    rospy.init_node('original_location_box_publisher')
+    original_location_box_publisher = BoxPublisher()
     rospy.spin()
