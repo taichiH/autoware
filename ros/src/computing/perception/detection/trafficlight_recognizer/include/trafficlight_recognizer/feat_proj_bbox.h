@@ -26,7 +26,7 @@ namespace trafficlight_recognizer
   class FeatProjBBox : public nodelet::Nodelet
   {
   public:
-    typedef message_filters::sync_policies::ApproximateTime<
+    typedef message_filters::sync_policies::ExactTime<
       sensor_msgs::Image,
       autoware_msgs::Signals
       > SyncPolicy;
