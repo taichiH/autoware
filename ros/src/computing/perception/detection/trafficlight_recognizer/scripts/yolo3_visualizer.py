@@ -9,7 +9,7 @@ import cv_bridge
 from sensor_msgs.msg import Image
 from autoware_msgs.msg import DetectedObject, DetectedObjectArray
 
-class Yolo3Vizualizer():
+class Yolo3Visualizer():
 
     def __init__(self):
         self.bridge = cv_bridge.CvBridge()
@@ -43,6 +43,6 @@ class Yolo3Vizualizer():
         self.image_pub.publish(vis_msg)
 
 if __name__=='__main__':
-    rospy.init_node('yolo3_vizualizer')
-    yolo3_vizualizer = Yolo3Vizualizer()
+    rospy.init_node('yolo3_visualizer')
+    yolo3_visualizer = Yolo3Visualizer()
     rospy.spin()
