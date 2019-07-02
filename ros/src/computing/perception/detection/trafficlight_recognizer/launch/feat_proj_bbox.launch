@@ -2,17 +2,33 @@
   <arg name="input_signal" default="/roi_signal_proj"/>
   <arg name="input_image" default="/image_raw"/>
 
-  <node pkg="trafficlight_recognizer" type="feat_proj_bbox" name="feature_projection_bbox" output="log">
-    <param name="input_signal" type="str" value="$(arg input_signal)"/>
-    <param name="input_image" type="str" value="$(arg input_image)"/>
-  </node>
-
-  <node pkg="nodelet" type="nodelet" name="apply_mask_image" args="standalone jsk_perception/ApplyMaskImage">
-    <remap from="~input" to="$(arg input_image)" />
-    <remap from="~input/mask" to="/feat_proj_bbox/output" />
+  <node name="feat_proj_bbox"
+        pkg="nodelet" type="nodelet"
+        output="log"
+        args="standalone trafficlight_recognizer/FeatProjBBox">
+    <remap from="input_signal" to="$(arg input_signal)" />
+    <remap from="input_image" to="$(arg input_image)" />
     <rosparam>
-      approximate_sync: false
-      clip: false
+      z_max: 100
+      z_min: 20
+      w_max: 350
+      w_min: 50
+      h_max: 200
+      h_min: 50
+      approximate_sync: true
     </rosparam>
   </node>
+
+  <!-- <node name="apply_mask_image" -->
+  <!--       pkg="nodelet" type="nodelet" -->
+  <!--       output="log" -->
+  <!--       args="standalone jsk_perception/ApplyMaskImage"> -->
+  <!--   <remap from="~input" to="$(arg input_image)" /> -->
+  <!--   <remap from="~input/mask" to="/feat_proj_bbox/output" /> -->
+  <!--   <rosparam> -->
+  <!--     approximate_sync: false -->
+  <!--     clip: false -->
+  <!--   </rosparam> -->
+  <!-- </node> -->
+
 </launch>

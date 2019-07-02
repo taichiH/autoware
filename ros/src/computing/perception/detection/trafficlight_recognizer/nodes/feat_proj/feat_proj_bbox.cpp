@@ -125,3 +125,6 @@ namespace trafficlight_recognizer
     }
   }
 } // namespace trafficlight_recognizer
+
+#include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(trafficlight_recognizer::FeatProjBBox, nodelet::Nodelet)
