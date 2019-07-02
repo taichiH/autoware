@@ -1,0 +1,49 @@
+<launch>
+  <node name="dummy_image_publisher"
+        pkg="jsk_perception" type="image_publisher.py"
+        clear_params="true">
+    <rosparam subst_value="true">
+      file_name: $(find trafficlight_recognizer)/test/trafficlight.jpg
+      rate: 30
+    </rosparam>
+  </node>
+
+  <node name="dummy_signal_publisher"
+        pkg="trafficlight_recognizer" type="dummy_signal_publisher.py">
+    <rosparam subst_value="true">
+      rate: 30
+    </rosparam>
+  </node>
+
+  <node name="feat_proj_bbox"
+        pkg="nodelet" type="nodelet"
+        output="log"
+        args="standalone trafficlight_recognizer/FeatProjBBox">
+    <remap from="~input_signal" to="dummy_signal_publisher/output" />
+    <remap from="~input_image" to="dummy_image_publisher/output" />
+    <rosparam>
+      z_max: 100
+      z_min: 20
+      w_max: 350
+      w_min: 50
+      h_max: 200
+      h_min: 50
+      approximate_sync: true
+    </rosparam>
+  </node>
+
+  <test test-name="test_feat_proj_bbox"
+        name="test_feat_proj_bbox"
+        pkg="jsk_tools" type="test_topic_published.py"
+        retry="3">
+    <rosparam>
+      topic_0: /feat_proj_bbox/output/mask_image
+      timeout_0: 30
+      topic_1: /feat_proj_bbox/nearest_roi_image
+      timeout_1: 30
+      topic_1: /feat_proj_bbox/nearest_roi_rect
+      timeout_1: 30
+    </rosparam>
+  </test>
+
+</launch>

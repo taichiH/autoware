@@ -19,8 +19,8 @@ namespace trafficlight_recognizer
     nearest_roi_image_pub = pnh_.advertise<sensor_msgs::Image>("nearest_roi_image", 1);
     nearest_roi_rect_pub = pnh_.advertise<kcf_ros::Rect>("nearest_roi_rect", 1);
 
-    sub_image_.subscribe(pnh_, "input_signal", 1);
-    sub_signal_.subscribe(pnh_, "input_image", 1);
+    sub_image_.subscribe(pnh_, "input_image", 1);
+    sub_signal_.subscribe(pnh_, "input_signal", 1);
 
     if (is_approximate_sync_){
       approximate_sync_ =
