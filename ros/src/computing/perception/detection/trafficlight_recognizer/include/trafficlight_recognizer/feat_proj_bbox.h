@@ -41,7 +41,7 @@ namespace trafficlight_recognizer
     int w_min = 50;
     int h_max = 200;
     int h_min = 50;
-    int prev_signal;
+    int prev_signal = 0;
 
     bool debug_ = true;
     bool is_approximate_sync_ = true;

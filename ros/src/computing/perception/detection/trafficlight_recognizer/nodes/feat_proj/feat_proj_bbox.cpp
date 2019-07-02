@@ -109,7 +109,9 @@ namespace trafficlight_recognizer
         } else {
           nearest_roi_rect.changed = false;
         }
+        nearest_roi_rect.header = signal_msg->header;
 
+        prev_signal = signal.signalId;
         prev_z = z;
       }
       index++;
