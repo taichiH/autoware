@@ -2,7 +2,7 @@
 
 from autoware_msgs.msg import Signals
 from autoware_msgs.msg import ExtractedPosition
-from jsk_topic_tools.srv import ChangeTopic
+from jsk_topic_tools.srv import ChangeTopic, ChangeTopicResponse
 import rospy
 
 class DummySignalePublisher(object):
@@ -23,6 +23,7 @@ class DummySignalePublisher(object):
         except:
             rospy.logerr('input integer value string')
             return
+        return ChangeTopicResponse()
 
     def publish(self, event):
         signals_msg = Signals()

@@ -104,7 +104,9 @@ namespace trafficlight_recognizer
         nearest_roi_rect.y = lt.y;
         nearest_roi_rect.width = rb.x - lt.x;
         nearest_roi_rect.height = rb.y - lt.y;
+        nearest_roi_rect.signal = signal.signalId;
         if (prev_signal != signal.signalId){
+          ROS_INFO("signal changed !!!");
           nearest_roi_rect.changed = true;
         } else {
           nearest_roi_rect.changed = false;

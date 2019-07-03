@@ -4,7 +4,7 @@
 
   <node name="feat_proj_bbox"
         pkg="nodelet" type="nodelet"
-        output="log"
+        output="screen"
         args="standalone trafficlight_recognizer/FeatProjBBox">
     <remap from="input_signal" to="$(arg input_signal)" />
     <remap from="input_image" to="$(arg input_image)" />
