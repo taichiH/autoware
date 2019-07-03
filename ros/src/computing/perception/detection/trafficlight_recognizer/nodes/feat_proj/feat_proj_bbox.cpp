@@ -92,8 +92,8 @@ namespace trafficlight_recognizer
       roi_image_msg.image_frame = in_image_msg->header.frame_id;
       roi_image_msg.x = lt.x;
       roi_image_msg.y = lt.y;
-      roi_image_msg.width = rb.x;
-      roi_image_msg.height = rb.y;
+      roi_image_msg.width = rb.x - lt.x;
+      roi_image_msg.height = rb.y - lt.y;
       roi_image_msg.pose.position.z = float(signal.z);
       roi_image_array.objects.push_back(roi_image_msg);
 
@@ -102,8 +102,8 @@ namespace trafficlight_recognizer
 
         nearest_roi_rect.x = lt.x;
         nearest_roi_rect.y = lt.y;
-        nearest_roi_rect.width = rb.x;
-        nearest_roi_rect.height = rb.y;
+        nearest_roi_rect.width = rb.x - lt.x;
+        nearest_roi_rect.height = rb.y - lt.y;
         if (prev_signal != signal.signalId){
           nearest_roi_rect.changed = true;
         } else {

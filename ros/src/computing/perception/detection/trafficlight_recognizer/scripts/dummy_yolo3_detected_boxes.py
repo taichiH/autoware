@@ -21,8 +21,8 @@ class DummyYolo3DetectedBoxes(object):
 
         for i in range(1):
             detected_object = DetectedObject()
-            detected_object.x = 386
-            detected_object.y = 132
+            detected_object.x = 136 # on croped_roi_image
+            detected_object.y = 85 # on croped_roi_image
             detected_object.width = 40
             detected_object.height = 15
             detected_object_array.objects.append(detected_object)

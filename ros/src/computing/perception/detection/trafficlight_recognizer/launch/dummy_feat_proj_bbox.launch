@@ -17,18 +17,13 @@
   </node>
 
   <node name="dummy_yolo3_detector"
-        pkg="trafficlight_recognizer" type="dummy_yolo3_detected_boxes.py">
+        pkg="trafficlight_recognizer" type="dummy_yolo3_detected_boxes.py"
+        output="log">
     <rosparam subst_value="true">
       rate: 30
     </rosparam>
   </node>
 
-  <node name="yolo3_visualizer"
-        pkg="trafficlight_recognizer" type="yolo3_visualizer.py"
-        output="log">
-    <remap from="~input_detected_boxes" to="dummy_yolo3_detector/output"/>
-    <remap from="~input_image" to="dummy_image_publisher/output"/>
-  </node>
 
   <node name="feat_proj_bbox"
         pkg="nodelet" type="nodelet"
@@ -36,7 +31,7 @@
         args="standalone trafficlight_recognizer/FeatProjBBox">
     <remap from="~input_signal" to="dummy_signal_publisher/output" />
     <remap from="~input_image" to="dummy_image_publisher/output" />
-    <rosparam>
+    <rosparam subst_value="true">
       z_max: 100
       z_min: 20
       w_max: 350
