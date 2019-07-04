@@ -1,0 +1,15 @@
+<launch>
+
+  <arg name="input_nearest_roi_rect" default="/feat_proj_bbox/nearest_roi_rect" />
+  <arg name="input_detection_result" default="/detection/image_detector/objects" />
+  <arg name="input_tracking_result" default="/kcf_ros/output_rect" />
+
+  <node name="detecter_and_tracker_fuser"
+        pkg="trafficlight_recognizer" type="detecter_and_tracker_fuser.py"
+        output="screen">
+    <remap from="~input_nearest_roi_rect" to="$(arg input_nearest_roi_rect)" />
+    <remap from="~input_nearest_roi_rect" to="$(arg input_nearest_roi_rect)" />
+    <remap from="~input_nearest_roi_rect" to="$(arg input_nearest_roi_rect)" />
+  </node>
+
+</launch>

@@ -2,9 +2,9 @@
   <node name="yolo3_visualizer"
         pkg="trafficlight_recognizer" type="yolo3_visualizer.py"
         output="screen">
-    <remap from="~input_image" to="dummy_image_publisher/output"/> 
-    <remap from="~input_detected_boxes" to="dummy_yolo3_detector/output"/>
-    <remap from="~input_nearest_roi_rect" to="feat_proj_bbox/nearest_roi_rect"/>
+    <remap from="~input_image" to="/image_raw"/> 
+    <remap from="~input_detected_boxes" to="/detection/image_detector/objects"/>
+    <remap from="~input_nearest_roi_rect" to="/feat_proj_bbox/nearest_roi_rect"/>
     <remap from="~input_kcf_rect" to="kcf_tracker/output_rect"/>
     <remap from="~input_qatm_rect_array" to="qatm/output/rects"/>
     <remap from="~input_qatm_label_array" to="qatm/output/labels"/>
