@@ -40,12 +40,36 @@ class TrafficlightClassifier():
 
         red_px_size = len(red_image[red_image > 0.5])
         red_ratio = red_px_size / float(red_image.size)
-        print(red_px_size, red_image.size)
 
         blue_px_size = len(blue_image[blue_image > 0.5])
         blue_ratio = blue_px_size / float(blue_image.size)
 
-        print('blue_ratio, red_ratio: ', blue_ratio, red_ratio)
+        print(blue_ratio,red_ratio)
+
+        red_on = False
+        blue_on = False
+        if 0.05 < red_ratio and red_ratio < 0.2:
+            red_on = True
+        if 0.05 < blue_ratio and blue_ratio < 0.2:
+            blue_on = True
+
+
+        color = None
+        if blue_on and red_on:
+            light = "blue"
+            color = (255, 0, 0)
+        else:
+            light = "red"
+            color = (0, 0, 255)
+
+        print(light)
+
+        output_image = np.zeros((
+            100, 200, 3),dtype=np.uint8)
+        cv2.putText(
+            output_image, light, (10,50), cv2.FONT_HERSHEY_SIMPLEX, 2, color, 2, cv2.LINE_AA)
+
+        self.image_pub.publish(self.bridge.cv2_to_imgmsg(output_image, encoding='bgr8'))
 
 if __name__ == '__main__':
     rospy.init_node('trafficlight_classification')

@@ -35,4 +35,8 @@
     <param name="v_limit_min" value="80" />
   </node>
 
+  <node name="trafficlight_classifier"
+        pkg="trafficlight_recognizer" type="trafficlight_classification.py"
+        output="screen"/>
+
 </launch>
