@@ -1,0 +1,38 @@
+<launch>
+  <arg name="image" default="/kcf_tracker/output_croped_image" />
+
+  <arg name="use_camera_info" default="false" />
+  <arg name="debug_view" default="false" />
+  <arg name="queue_size" default="3" />
+
+  <node name="red_hsv_color_filter"
+        pkg="opencv_apps" type="hsv_color_filter"
+        output="screen">
+    <remap from="image" to="$(arg image)" />
+    <param name="use_camera_info" value="$(arg use_camera_info)" />
+    <param name="debug_view" value="$(arg debug_view)" />
+    <param name="queue_size" value="$(arg queue_size)" />
+    <param name="h_limit_max" value="360" />
+    <param name="h_limit_min" value="0" />
+    <param name="s_limit_max" value="255" />
+    <param name="s_limit_min" value="95" />
+    <param name="v_limit_max" value="255" />
+    <param name="v_limit_min" value="215" />
+  </node>
+
+  <node name="blue_hsv_color_filter"
+        pkg="opencv_apps" type="hsv_color_filter"
+        output="screen">
+    <remap from="image" to="$(arg image)" />
+    <param name="use_camera_info" value="$(arg use_camera_info)" />
+    <param name="debug_view" value="$(arg debug_view)" />
+    <param name="queue_size" value="$(arg queue_size)" />
+    <param name="h_limit_max" value="234" />
+    <param name="h_limit_min" value="90" />
+    <param name="s_limit_max" value="255" />
+    <param name="s_limit_min" value="125" />
+    <param name="v_limit_max" value="255" />
+    <param name="v_limit_min" value="80" />
+  </node>
+
+</launch>
