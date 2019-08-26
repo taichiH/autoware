@@ -16,14 +16,23 @@ class TrafficlightClassifier():
         self.bridge = cv_bridge.CvBridge()
         queue_size = rospy.get_param('~queue_size', 100)
 
+        self.font_size = 0.3
+        self.ratio_thresh = rospy.get_param('~ratio_thresh', 0.02)
+
         self.image_pub = rospy.Publisher(
             '~output', Image, queue_size=queue_size)
+        self.debug_pub = rospy.Publisher(
+            '~debug', Image, queue_size=queue_size)
 
+        sub_original = message_filters.Subscriber(
+            '~input_original', Image, queue_size=queue_size)
         sub_red = message_filters.Subscriber(
-            '/red_hsv_color_filter/image', Image, queue_size=queue_size)
+            '~input_red', Image, queue_size=queue_size)
         sub_blue = message_filters.Subscriber(
-            '/blue_hsv_color_filter/image', Image, queue_size=queue_size)
-        self.subs = [sub_red, sub_blue]
+            '~input_blue', Image, queue_size=queue_size)
+        sub_black = message_filters.Subscriber(
+            '~input_black', Image, queue_size=queue_size)
+        self.subs = [sub_red, sub_blue, sub_black, sub_original]
 
         if rospy.get_param('~approximate_sync', False):
             slop = rospy.get_param('~slop', 0.1)
@@ -34,42 +43,66 @@ class TrafficlightClassifier():
                 fs=self.subs, queue_size=queue_size)
             sync.registerCallback(self.callback)
 
-    def callback(self, redmsg, bluemsg):
+    def add_info(self, image, text, ratio):
+        text_img = np.zeros(image.shape,dtype=np.uint8)
+        cv2.putText(
+            text_img, text, (10,10), cv2.FONT_HERSHEY_SIMPLEX, self.font_size, (255,255,255), 1, cv2.LINE_AA)
+        cv2.putText(
+            text_img, str(round(ratio, 5)), (10,20), cv2.FONT_HERSHEY_SIMPLEX, self.font_size, (255,255,255), 1, cv2.LINE_AA)
+        dst = cv2.hconcat([text_img, image])
+        return dst
+
+    def filtering(self, image):
+        kernel = np.ones((5,5),np.uint8)
+        dst =cv2.morphologyEx(image, cv2.MORPH_OPEN, kernel)
+        px_size = len(dst[dst > 0.5])
+        ratio = px_size / float(dst.size)
+        return dst, ratio
+
+    def callback(self, redmsg, bluemsg, blackmsg, originalmsg):
+        original_image = self.bridge.imgmsg_to_cv2(originalmsg, desired_encoding='bgr8')
         red_image = self.bridge.imgmsg_to_cv2(redmsg, desired_encoding='bgr8')
         blue_image = self.bridge.imgmsg_to_cv2(bluemsg, desired_encoding='bgr8')
+        black_image = self.bridge.imgmsg_to_cv2(blackmsg, desired_encoding='bgr8')
+        images = [red_image, blue_image, black_image]
+        texts = ['red', 'blue', 'black']
 
-        red_px_size = len(red_image[red_image > 0.5])
-        red_ratio = red_px_size / float(red_image.size)
+        ratios = []
+        for i, image in enumerate(images):
+            dst, ratio = self.filtering(image)
+            images[i] = dst
+            ratios.append(ratio)
 
-        blue_px_size = len(blue_image[blue_image > 0.5])
-        blue_ratio = blue_px_size / float(blue_image.size)
+        for i, image in enumerate(images):
+            images[i] = self.add_info(image, texts[i], ratios[i])
 
-        print(blue_ratio,red_ratio)
-
-        red_on = False
-        blue_on = False
-        if 0.05 < red_ratio and red_ratio < 0.2:
-            red_on = True
-        if 0.05 < blue_ratio and blue_ratio < 0.2:
-            blue_on = True
-
-
-        color = None
-        if blue_on and red_on:
-            light = "blue"
-            color = (255, 0, 0)
-        else:
-            light = "red"
-            color = (0, 0, 255)
-
-        print(light)
-
-        output_image = np.zeros((
-            100, 200, 3),dtype=np.uint8)
+        text_img = np.zeros(original_image.shape,dtype=np.uint8)
         cv2.putText(
-            output_image, light, (10,50), cv2.FONT_HERSHEY_SIMPLEX, 2, color, 2, cv2.LINE_AA)
+            text_img, 'original', (10,10), cv2.FONT_HERSHEY_SIMPLEX, self.font_size, (255,255,255), 1, cv2.LINE_AA)
+        original_image = cv2.hconcat([text_img, original_image])
 
+
+        concated_image = cv2.vconcat([original_image, images[0]])
+        concated_image = cv2.vconcat([concated_image, images[1]])
+        concated_image = cv2.vconcat([concated_image, images[2]])
+
+        if ratios[1] > self.ratio_thresh:
+            result = 'go'
+            color = (255,0,0)
+        elif ratios[0] > self.ratio_thresh:
+            result = 'stop'
+            color = (0,0,255)
+        else:
+            result = 'unknown'
+            color = (255,255,255)
+
+        output_image = np.full(images[0].shape, color, dtype=np.uint8)
+        cv2.putText(
+            output_image, result, (30,10), cv2.FONT_HERSHEY_SIMPLEX, self.font_size, (0,0,0), 1, cv2.LINE_AA)
+
+        concated_image = cv2.vconcat([concated_image, output_image])
         self.image_pub.publish(self.bridge.cv2_to_imgmsg(output_image, encoding='bgr8'))
+        self.debug_pub.publish(self.bridge.cv2_to_imgmsg(concated_image, encoding='bgr8'))
 
 if __name__ == '__main__':
     rospy.init_node('trafficlight_classification')
