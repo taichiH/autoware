@@ -43,7 +43,7 @@ class TrafficlightClassifier():
                 fs=self.subs, queue_size=queue_size)
             sync.registerCallback(self.callback)
 
-    def add_info(self, image, text, ratio):
+    def concat_text_image(self, image, text, ratio):
         text_img = np.zeros(image.shape,dtype=np.uint8)
         cv2.putText(
             text_img, text, (10,10), cv2.FONT_HERSHEY_SIMPLEX, self.font_size, (255,255,255), 1, cv2.LINE_AA)
@@ -53,11 +53,25 @@ class TrafficlightClassifier():
         return dst
 
     def filtering(self, image):
-        kernel = np.ones((5,5),np.uint8)
+        kernel = np.ones((3,3),np.uint8)
         dst =cv2.morphologyEx(image, cv2.MORPH_OPEN, kernel)
         px_size = len(dst[dst > 0.5])
         ratio = px_size / float(dst.size)
         return dst, ratio
+
+    def create_vis_image(self, original_image, images, ratios):
+        texts = ['red', 'blue', 'black']
+        for i, image in enumerate(images):
+            images[i] = self.concat_text_image(image, texts[i], ratios[i])
+        text_img = np.zeros(original_image.shape,dtype=np.uint8)
+        cv2.putText(
+            text_img, 'original', (10,10), cv2.FONT_HERSHEY_SIMPLEX, self.font_size, (255,255,255), 1, cv2.LINE_AA)
+        original_image = cv2.hconcat([text_img, original_image])
+
+        concated_image = cv2.vconcat([original_image, images[0]])
+        concated_image = cv2.vconcat([concated_image, images[1]])
+        concated_image = cv2.vconcat([concated_image, images[2]])
+        return concated_image, images
 
     def callback(self, redmsg, bluemsg, blackmsg, originalmsg):
         original_image = self.bridge.imgmsg_to_cv2(originalmsg, desired_encoding='bgr8')
@@ -65,26 +79,12 @@ class TrafficlightClassifier():
         blue_image = self.bridge.imgmsg_to_cv2(bluemsg, desired_encoding='bgr8')
         black_image = self.bridge.imgmsg_to_cv2(blackmsg, desired_encoding='bgr8')
         images = [red_image, blue_image, black_image]
-        texts = ['red', 'blue', 'black']
 
         ratios = []
         for i, image in enumerate(images):
             dst, ratio = self.filtering(image)
             images[i] = dst
             ratios.append(ratio)
-
-        for i, image in enumerate(images):
-            images[i] = self.add_info(image, texts[i], ratios[i])
-
-        text_img = np.zeros(original_image.shape,dtype=np.uint8)
-        cv2.putText(
-            text_img, 'original', (10,10), cv2.FONT_HERSHEY_SIMPLEX, self.font_size, (255,255,255), 1, cv2.LINE_AA)
-        original_image = cv2.hconcat([text_img, original_image])
-
-
-        concated_image = cv2.vconcat([original_image, images[0]])
-        concated_image = cv2.vconcat([concated_image, images[1]])
-        concated_image = cv2.vconcat([concated_image, images[2]])
 
         if ratios[1] > self.ratio_thresh:
             result = 'go'
@@ -96,6 +96,7 @@ class TrafficlightClassifier():
             result = 'unknown'
             color = (255,255,255)
 
+        concated_image, images = self.create_vis_image(original_image, images, ratios)
         output_image = np.full(images[0].shape, color, dtype=np.uint8)
         cv2.putText(
             output_image, result, (30,10), cv2.FONT_HERSHEY_SIMPLEX, self.font_size, (0,0,0), 1, cv2.LINE_AA)
