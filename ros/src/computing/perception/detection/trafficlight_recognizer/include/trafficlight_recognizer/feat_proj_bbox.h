@@ -20,6 +20,8 @@
 #include <autoware_msgs/DetectedObject.h>
 #include <autoware_msgs/DetectedObjectArray.h>
 #include <kcf_ros/Rect.h>
+#include <jsk_recognition_msgs/BoundingBox.h>
+#include <visualization_msgs/Marker.h>
 
 namespace trafficlight_recognizer
 {
@@ -52,6 +54,8 @@ namespace trafficlight_recognizer
     ros::Publisher mask_image_pub;
     ros::Publisher nearest_roi_image_pub;
     ros::Publisher nearest_roi_rect_pub;
+    ros::Publisher nearest_bbox_pub;
+    ros::Publisher visualization_line_pub;
 
     boost::shared_ptr<message_filters::Synchronizer<SyncPolicy> > sync_;
     boost::shared_ptr<message_filters::Synchronizer<ApproximateSyncPolicy> > approximate_sync_;

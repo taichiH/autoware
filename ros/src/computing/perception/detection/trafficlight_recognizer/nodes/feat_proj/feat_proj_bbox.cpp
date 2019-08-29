@@ -18,6 +18,8 @@ namespace trafficlight_recognizer
     mask_image_pub = pnh_.advertise<sensor_msgs::Image>("output/mask_image", 1);
     nearest_roi_image_pub = pnh_.advertise<sensor_msgs::Image>("nearest_roi_image", 1);
     nearest_roi_rect_pub = pnh_.advertise<kcf_ros::Rect>("nearest_roi_rect", 1);
+    nearest_bbox_pub = pnh_.advertise<jsk_recognition_msgs::BoundingBox>("nearest_bbox", 1);
+    visualization_line_pub = pnh_.advertise<visualization_msgs::Marker>("visualization_line", 1);
 
     sub_image_.subscribe(pnh_, "input_image", 1);
     sub_signal_.subscribe(pnh_, "input_signal", 1);
@@ -94,6 +96,9 @@ namespace trafficlight_recognizer
       roi_image_msg.y = lt.y;
       roi_image_msg.width = rb.x - lt.x;
       roi_image_msg.height = rb.y - lt.y;
+
+      roi_image_msg.pose.position.x = float(signal.x);
+      roi_image_msg.pose.position.y = float(signal.y);
       roi_image_msg.pose.position.z = float(signal.z);
       roi_image_array.objects.push_back(roi_image_msg);
 
@@ -106,7 +111,6 @@ namespace trafficlight_recognizer
         nearest_roi_rect.height = rb.y - lt.y;
         nearest_roi_rect.signal = signal.signalId;
         if (prev_signal != signal.signalId){
-          ROS_INFO("signal changed !!!");
           nearest_roi_rect.changed = true;
         } else {
           nearest_roi_rect.changed = false;
@@ -126,6 +130,39 @@ namespace trafficlight_recognizer
     if(roi_image_array.objects.size() > 0){
       nearest_roi_image_pub.publish(roi_image_array.objects.at(nearest_index).roi_image);
       nearest_roi_rect_pub.publish(nearest_roi_rect);
+
+      jsk_recognition_msgs::BoundingBox nearest_bbox;
+      nearest_bbox.pose.position.x = roi_image_array.objects.at(nearest_index).pose.position.x;
+      nearest_bbox.pose.position.y = roi_image_array.objects.at(nearest_index).pose.position.y;
+      nearest_bbox.pose.position.z = roi_image_array.objects.at(nearest_index).pose.position.z;
+      nearest_bbox.dimensions.x = 2;
+      nearest_bbox.dimensions.y = 2;
+      nearest_bbox.dimensions.z = 0.7;
+      nearest_bbox.header = in_image_msg->header;
+      nearest_bbox_pub.publish(nearest_bbox);
+
+      visualization_msgs::Marker line_strip;
+      line_strip.header = in_image_msg->header;
+      line_strip.ns = "visualization_lines";
+      line_strip.action = visualization_msgs::Marker::ADD;
+      line_strip.pose.orientation.w = 1.0;
+      line_strip.id = 2;
+      line_strip.type = visualization_msgs::Marker::LINE_STRIP;
+      line_strip.scale.x = 0.1;
+      line_strip.color.g = 1.0;
+      line_strip.color.a = 1.0;
+
+      int split = 100;
+      for (uint32_t i = 0; i < split; ++i) {
+          geometry_msgs::Point p;
+          p.x = roi_image_array.objects.at(nearest_index).pose.position.x * i / split;
+          p.y = roi_image_array.objects.at(nearest_index).pose.position.y * i / split;
+          p.z = roi_image_array.objects.at(nearest_index).pose.position.z * i / split;
+
+          line_strip.points.push_back(p);
+      }
+      visualization_line_pub.publish(line_strip);
+
     }
   }
 } // namespace trafficlight_recognizer
