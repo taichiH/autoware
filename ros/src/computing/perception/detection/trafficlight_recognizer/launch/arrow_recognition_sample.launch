@@ -1,25 +1,37 @@
 <launch>
 
   <arg name="input" default="image_publisher/output" />
-  <arg name="template_path" default="/home/taichi/Downloads/arrow_template.jpg" />
+  <arg name="template_path" default="/home/higashide/trafficlight_data3/right-0.jpg" />
   <arg name="binary_thresh" default="150" />
   <arg name="pair_thresh" default="3" />
   <arg name="use_canny" default="false" />
+
 
   <node name="image_publisher"
         pkg="jsk_perception" type="image_publisher.py"
         clear_params="true">
     <rosparam subst_value="true">
-      file_name: /home/taichi/Downloads/trafficlight2.jpg
+      file_name: /home/higashide/trafficlight_data3/trafficlight-6.jpg
       rate: 30
     </rosparam>
   </node>
 
+  <node name="hsv_filter" pkg="opencv_apps" type="hsv_color_filter" output="screen">
+    <remap from="image" to="image_publisher/output" />
+    <param name="debug_view" value="false" />
+    <param name="queue_size" value="100" />
+    <param name="h_limit_max" value="290" />
+    <param name="h_limit_min" value="80" />
+    <param name="s_limit_max" value="255" />
+    <param name="s_limit_min" value="100" />
+    <param name="v_limit_max" value="255" />
+    <param name="v_limit_min" value="130" />
+  </node>
 
   <node name="arrow_recognition_sample"
         pkg="trafficlight_recognizer" type="arrow_recognition_sample.py"
         output="screen">
-    <remap from="~input" to="$(arg input)" />
+    <remap from="~input" to="hsv_filter/image" />
     <rosparam subst_value="true">
       template_path: $(arg template_path)
       binary_thresh: $(arg binary_thresh)

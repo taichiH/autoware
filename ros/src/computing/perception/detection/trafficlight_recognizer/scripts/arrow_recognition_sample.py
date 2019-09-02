@@ -57,6 +57,9 @@ class ArrowRecognition():
 
     def callback(self, msg):
         image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+        cv2.namedWindow('image_input', cv2.WINDOW_NORMAL)
+        cv2.imshow('image_input', image)
+
         image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
         if self.use_canny:
@@ -67,9 +70,13 @@ class ArrowRecognition():
             print('binary thresh')
             ret, image = cv2.threshold(image, self.binary_thresh, 255, 0)
             template_ret, template_image = cv2.threshold(self.template, self.binary_thresh, 255, 0)
-            kernel = np.ones((4,4),np.uint8)
+
+            kernel = np.ones((5,5),np.uint8)
+
             # image = cv2.morphologyEx(image, cv2.MORPH_OPEN, kernel)
-            # image = cv2.dilate(image,kernel,iterations=1)
+            image = cv2.dilate(image,kernel,iterations=1)
+            template_image = cv2.dilate(template_image,kernel,iterations=1)
+
 
         template_contours, _ = self.get_shape(template_image)
         image_contours, _ = self.get_shape(image)
@@ -97,7 +104,7 @@ class ArrowRecognition():
             image_debug = cv2.drawContours(image_debug, image_contours, i, color, 1)
 
             text = str(i) + ', ' + str(j) + ', ' + str(round(likelihood, 3))
-            cv2.putText(image_debug, text, (10, 30*(incr+1)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 1, cv2.LINE_AA)
+            # cv2.putText(image_debug, text, (10, 30*(incr+1)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 1, cv2.LINE_AA)
 
         for i in range(len(template_contours)):
             color = (np.random.randint(100,255), np.random.randint(100,255), np.random.randint(100,255))
