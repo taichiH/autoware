@@ -1,17 +1,18 @@
 <launch>
 
   <arg name="input" default="image_publisher/output" />
-  <arg name="template_path" default="/home/higashide/trafficlight_data3/right-0.jpg" />
+  <arg name="template_path" default="$(find trafficlight_recognizer)/arrow_template.jpg" />
   <arg name="binary_thresh" default="150" />
-  <arg name="pair_thresh" default="3" />
-  <arg name="use_canny" default="false" />
+  <arg name="pair_thresh" default="10" />
+  <arg name="area_thresh" default="300" />
+  <arg name="dilate_kernel_size" default="5" />
 
 
   <node name="image_publisher"
         pkg="jsk_perception" type="image_publisher.py"
         clear_params="true">
     <rosparam subst_value="true">
-      file_name: /home/higashide/trafficlight_data3/trafficlight-6.jpg
+      file_name: $(find trafficlight_recognizer)/trafficlight.jpg
       rate: 30
     </rosparam>
   </node>
@@ -19,13 +20,13 @@
   <node name="hsv_filter" pkg="opencv_apps" type="hsv_color_filter" output="screen">
     <remap from="image" to="image_publisher/output" />
     <param name="debug_view" value="false" />
-    <param name="queue_size" value="100" />
-    <param name="h_limit_max" value="290" />
-    <param name="h_limit_min" value="80" />
+    <param name="queue_size" value="1" />
+    <param name="h_limit_max" value="200" />
+    <param name="h_limit_min" value="75" />
     <param name="s_limit_max" value="255" />
-    <param name="s_limit_min" value="100" />
+    <param name="s_limit_min" value="130" />
     <param name="v_limit_max" value="255" />
-    <param name="v_limit_min" value="130" />
+    <param name="v_limit_min" value="50" />
   </node>
 
   <node name="arrow_recognition_sample"
@@ -36,7 +37,8 @@
       template_path: $(arg template_path)
       binary_thresh: $(arg binary_thresh)
       pair_thresh: $(arg pair_thresh)
-      use_canny: $(arg use_canny)
+      area_thresh: $(arg area_thresh)
+      dilate_kernel_size: $(arg dilate_kernel_size)
     </rosparam>
   </node>
 

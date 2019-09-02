@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+import sys
+import traceback
+
 import cv2
 import copy
 import numpy as np
@@ -15,16 +18,26 @@ class ArrowRecognition():
         template_path = rospy.get_param('~template_path', './template.jpg')
         self.binary_thresh = rospy.get_param('~binary_thresh', 127)
         self.pair_thresh = rospy.get_param('~pair_thresh', 3)
-        self.use_canny = rospy.get_param('~use_canny', False)
+        self.area_thresh = rospy.get_param('~area_thresh', 400)
+        self.dilate_kernel_size = rospy.get_param('~dilate_kernel_size', 7)
+
+        self.colors = [(np.random.randint(100,255), np.random.randint(100,255), np.random.randint(100,255)) for i in range(1000)]
 
         self.template = self.load_template(template_path)
         rospy.Subscriber('~input', Image, self.callback)
 
     def load_template(self, path):
-        template = cv2.imread(path)
-        template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
-        ret, template = cv2.threshold(template, self.binary_thresh, 255, 0)
-        return template
+        try:
+            template = cv2.imread(path)
+            if template is None:
+                error_txt = 'Could not find a image: ' + path
+                raise ValueError(error_txt)
+            template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+            ret, template = cv2.threshold(template, self.binary_thresh, 255, 0)
+            return template
+        except:
+            traceback.print_exc()
+            sys.exit()
 
 
     def draw_contours(self, image, contours):
@@ -44,9 +57,6 @@ class ArrowRecognition():
         return debug_img
 
     def get_shape(self, thresh_img):
-        # dst, contours, hierarchy = cv2.findContours(
-        #     thresh_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
         dst, contours, hierarchy = cv2.findContours(
             thresh_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -57,26 +67,11 @@ class ArrowRecognition():
 
     def callback(self, msg):
         image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-        cv2.namedWindow('image_input', cv2.WINDOW_NORMAL)
-        cv2.imshow('image_input', image)
-
         image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-        if self.use_canny:
-            print('canny')
-            image = cv2.Canny(image, 100, 200)
-            template_image = cv2.Canny(self.template, 100, 200)
-        else:
-            print('binary thresh')
-            ret, image = cv2.threshold(image, self.binary_thresh, 255, 0)
-            template_ret, template_image = cv2.threshold(self.template, self.binary_thresh, 255, 0)
-
-            kernel = np.ones((5,5),np.uint8)
-
-            # image = cv2.morphologyEx(image, cv2.MORPH_OPEN, kernel)
-            image = cv2.dilate(image,kernel,iterations=1)
-            template_image = cv2.dilate(template_image,kernel,iterations=1)
-
+        kernel = np.ones((self.dilate_kernel_size, self.dilate_kernel_size),np.uint8)
+        image = cv2.dilate(image, kernel, iterations=1)
+        template_image = cv2.dilate(self.template, kernel, iterations=1)
 
         template_contours, _ = self.get_shape(template_image)
         image_contours, _ = self.get_shape(image)
@@ -89,22 +84,30 @@ class ArrowRecognition():
         print("len(image_contours): ", len(image_contours))
         print("len(template_contours): ", len(template_contours))
 
+        print('self.area_thresh: ', self.area_thresh)
         index_pairs = []
         for i, image_cnt in enumerate(image_contours):
             for j, template_cnt in enumerate(template_contours):
                 ret = cv2.matchShapes(image_cnt, template_cnt, 1, 0.0)
-                if ret < self.pair_thresh:
-                    print(i, j, ret)
-                    index_pairs.append((i, j, ret))
+                area = cv2.contourArea(image_cnt)
 
+                if ret < self.pair_thresh and area > self.area_thresh:
+                    print(i, j, round(ret, 3), area)
+                    index_pairs.append((i, j, ret, area))
+
+        index_pairs = sorted(index_pairs, key=lambda x: x[2])
         for incr, index_pair in enumerate(index_pairs):
-            color = (np.random.randint(100,255), np.random.randint(100,255), np.random.randint(100,255))
-            i, j, likelihood = index_pair
+            color = self.colors[incr]
+            i, j, likelihood, area = index_pair
 
-            image_debug = cv2.drawContours(image_debug, image_contours, i, color, 1)
+            image_debug = cv2.drawContours(image_debug, image_contours, i, color, 2)
+            x, y, width, height = cv2.boundingRect(image_contours[i])
+            lt = (x, y)
+            rb = (x + width, y + height)
+            image_debug = cv2.rectangle(image_debug, lt, rb, color, 2)
 
-            text = str(i) + ', ' + str(j) + ', ' + str(round(likelihood, 3))
-            # cv2.putText(image_debug, text, (10, 30*(incr+1)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 1, cv2.LINE_AA)
+            text = str(round(likelihood, 3))
+            cv2.putText(image_debug, text, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 1, cv2.LINE_AA)
 
         for i in range(len(template_contours)):
             color = (np.random.randint(100,255), np.random.randint(100,255), np.random.randint(100,255))
@@ -113,12 +116,7 @@ class ArrowRecognition():
         cv2.namedWindow('image_debug', cv2.WINDOW_NORMAL)
         cv2.imshow('image_debug', image_debug)
 
-        cv2.namedWindow('template_debug', cv2.WINDOW_NORMAL)
-        cv2.imshow('template_debug', template_debug)
-
-        cv2.waitKey()
-
-
+        cv2.waitKey(50)
 
 if __name__=='__main__':
     rospy.init_node('arrow_recognition_sample')
