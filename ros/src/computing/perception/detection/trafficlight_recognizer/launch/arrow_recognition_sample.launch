@@ -1,0 +1,31 @@
+<launch>
+
+  <arg name="input" default="image_publisher/output" />
+  <arg name="template_path" default="/home/taichi/Downloads/arrow_template.jpg" />
+  <arg name="binary_thresh" default="150" />
+  <arg name="pair_thresh" default="3" />
+  <arg name="use_canny" default="false" />
+
+  <node name="image_publisher"
+        pkg="jsk_perception" type="image_publisher.py"
+        clear_params="true">
+    <rosparam subst_value="true">
+      file_name: /home/taichi/Downloads/trafficlight2.jpg
+      rate: 30
+    </rosparam>
+  </node>
+
+
+  <node name="arrow_recognition_sample"
+        pkg="trafficlight_recognizer" type="arrow_recognition_sample.py"
+        output="screen">
+    <remap from="~input" to="$(arg input)" />
+    <rosparam subst_value="true">
+      template_path: $(arg template_path)
+      binary_thresh: $(arg binary_thresh)
+      pair_thresh: $(arg pair_thresh)
+      use_canny: $(arg use_canny)
+    </rosparam>
+  </node>
+
+</launch>
