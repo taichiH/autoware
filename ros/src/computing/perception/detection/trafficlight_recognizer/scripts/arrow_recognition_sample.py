@@ -67,10 +67,6 @@ class ArrowRecognition():
         dst, contours, hierarchy = cv2.findContours(
             thresh_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-
-        if len(contours) > 1:
-            rospy.loginfo('%d instances exist' %(len(contours)))
-
         return contours, hierarchy
 
     def calc_arrow_direction(self, area_lst):
@@ -104,10 +100,9 @@ class ArrowRecognition():
         image_debug = copy.copy(image)
         image_debug = cv2.cvtColor(image_debug, cv2.COLOR_GRAY2BGR)
 
-        print("len(image_contours): ", len(image_contours))
-        print("len(template_contours): ", len(template_contours))
-
-        print('self.area_thresh: ', self.area_thresh)
+        # print("len(image_contours): ", len(image_contours))
+        # print("len(template_contours): ", len(template_contours))
+        # print('self.area_thresh: ', self.area_thresh)
 
         hulls = []
         defects = []
@@ -118,7 +113,6 @@ class ArrowRecognition():
                 area = cv2.contourArea(image_cnt)
 
                 if ret < self.pair_thresh and area > self.area_thresh:
-                    print(i, j, round(ret, 3), area)
                     # hull = cv2.convexHull(image_cnt, returnPoints = False)
                     # defect = cv2.convexityDefects(image_cnt, hull)
                     # defects.append(defect)
@@ -138,7 +132,7 @@ class ArrowRecognition():
             color = self.colors[incr]
             i, j, likelihood, area = index_pair
 
-            image_debug = cv2.drawContours(image_debug, image_contours, i, color, 1)
+            image_debug = cv2.drawContours(image_debug, image_contours, i, color, 2)
 
             mu = cv2.moments(image_contours[i])
             gx, gy = int(mu['m10'] / mu['m00']), int(mu['m01'] / mu['m00'])
@@ -149,7 +143,7 @@ class ArrowRecognition():
             rect_msg.x, rect_msg.y, rect_msg.width, rect_msg.height = x, y, width, height
             lt = (x, y)
             rb = (x + width, y + height)
-            image_debug = cv2.rectangle(image_debug, lt, rb, color, 2)
+            image_debug = cv2.rectangle(image_debug, lt, rb, color, 1)
 
             top =    slice(y                , int(y+height*0.5))
             bottom = slice(int(y+height*0.5), y+height         )
@@ -180,9 +174,20 @@ class ArrowRecognition():
 
             rect_array_msg.rects.append(rect_msg)
 
+
+        for i in range(len(template_contours)):
+            template_image = cv2.drawContours(template_image, template_contours, i, color[i], 2)
+
+        height_diff = image_debug.shape[0] - template_image.shape[0]
+        pad_image = np.zeros((height_diff, template_image.shape[1]), dtype=np.uint8)
+        template_debug = cv2.vconcat([pad_image, template_image])
+        template_debug = cv2.cvtColor(template_debug, cv2.COLOR_GRAY2BGR)
+        cv2.line(template_debug, (0,0), (0, template_debug.shape[0]), (0,0,200), 1,8)
+
+        image_debug = cv2.hconcat([image_debug, template_debug])
+
         # cv2.namedWindow('image_debug', cv2.WINDOW_NORMAL)
         # cv2.imshow('image_debug', image_debug)
-
         imgmsg = self.bridge.cv2_to_imgmsg(image_debug, encoding='bgr8')
 
         imgmsg.header = msg.header
