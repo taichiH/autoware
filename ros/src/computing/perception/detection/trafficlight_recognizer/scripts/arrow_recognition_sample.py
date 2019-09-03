@@ -10,6 +10,8 @@ import numpy as np
 import rospy
 import cv_bridge
 from sensor_msgs.msg import Image
+from jsk_recognition_msgs.msg import Rect, RectArray
+from jsk_recognition_msgs.msg import ClassificationResult
 
 class ArrowRecognition():
 
@@ -20,10 +22,15 @@ class ArrowRecognition():
         self.pair_thresh = rospy.get_param('~pair_thresh', 3)
         self.area_thresh = rospy.get_param('~area_thresh', 400)
         self.dilate_kernel_size = rospy.get_param('~dilate_kernel_size', 7)
-
-        self.colors = [(np.random.randint(100,255), np.random.randint(100,255), np.random.randint(100,255)) for i in range(1000)]
-
+        self.colors = [(np.random.randint(100,255),
+                        np.random.randint(100,255),
+                        np.random.randint(100,255)) for i in range(1000)]
         self.template = self.load_template(template_path)
+
+        self.debug_pub = rospy.Publisher('~debug', Image, queue_size=1)
+        self.rects_pub = rospy.Publisher('~output/rect', RectArray, queue_size=1)
+        self.class_pub = rospy.Publisher('~output/class', ClassificationResult, queue_size=1)
+
         rospy.Subscriber('~input', Image, self.callback)
 
     def load_template(self, path):
@@ -60,31 +67,50 @@ class ArrowRecognition():
         dst, contours, hierarchy = cv2.findContours(
             thresh_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+
         if len(contours) > 1:
             rospy.loginfo('%d instances exist' %(len(contours)))
 
         return contours, hierarchy
 
+    def calc_arrow_direction(self, area_lst):
+        area_array = np.array(area_lst)
+        cells = area_array[:2, :1]
+        cells = cells.reshape(2)
+
+        if 'lt' in cells and 'rt' in cells:
+            return 'top'
+        elif 'lb' in cells and 'rb' in cells:
+            return 'bottom'
+        elif 'lt' in cells and 'lb' in cells:
+            return 'left'
+        elif 'rt' in cells and 'rb' in cells:
+            return 'right'
+        else:
+            return 'unknown'
+
     def callback(self, msg):
         image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+        original_image = copy.copy(image)
+
         image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
         kernel = np.ones((self.dilate_kernel_size, self.dilate_kernel_size),np.uint8)
         image = cv2.dilate(image, kernel, iterations=1)
         template_image = cv2.dilate(self.template, kernel, iterations=1)
-
         template_contours, _ = self.get_shape(template_image)
         image_contours, _ = self.get_shape(image)
 
         image_debug = copy.copy(image)
         image_debug = cv2.cvtColor(image_debug, cv2.COLOR_GRAY2BGR)
-        template_debug = copy.copy(template_image)
-        template_debug = cv2.cvtColor(template_debug, cv2.COLOR_GRAY2BGR)
 
         print("len(image_contours): ", len(image_contours))
         print("len(template_contours): ", len(template_contours))
 
         print('self.area_thresh: ', self.area_thresh)
+
+        hulls = []
+        defects = []
         index_pairs = []
         for i, image_cnt in enumerate(image_contours):
             for j, template_cnt in enumerate(template_contours):
@@ -93,28 +119,79 @@ class ArrowRecognition():
 
                 if ret < self.pair_thresh and area > self.area_thresh:
                     print(i, j, round(ret, 3), area)
+                    # hull = cv2.convexHull(image_cnt, returnPoints = False)
+                    # defect = cv2.convexityDefects(image_cnt, hull)
+                    # defects.append(defect)
+
+                    hull = cv2.convexHull(image_cnt, False)
+                    hulls.append(hull)
+
                     index_pairs.append((i, j, ret, area))
 
+        rect_array_msg = RectArray()
+        class_msg = ClassificationResult()
+
+        bboxes = []
         index_pairs = sorted(index_pairs, key=lambda x: x[2])
         for incr, index_pair in enumerate(index_pairs):
+            rect_msg = Rect()
             color = self.colors[incr]
             i, j, likelihood, area = index_pair
 
-            image_debug = cv2.drawContours(image_debug, image_contours, i, color, 2)
-            x, y, width, height = cv2.boundingRect(image_contours[i])
+            image_debug = cv2.drawContours(image_debug, image_contours, i, color, 1)
+
+            mu = cv2.moments(image_contours[i])
+            gx, gy = int(mu['m10'] / mu['m00']), int(mu['m01'] / mu['m00'])
+            cv2.circle(image_debug, (gx, gy), 1, (0, 0, 255), -1)
+
+            bbox = cv2.boundingRect(image_contours[i])
+            x, y, width, height = bbox
+            rect_msg.x, rect_msg.y, rect_msg.width, rect_msg.height = x, y, width, height
             lt = (x, y)
             rb = (x + width, y + height)
             image_debug = cv2.rectangle(image_debug, lt, rb, color, 2)
 
+            top =    slice(y                , int(y+height*0.5))
+            bottom = slice(int(y+height*0.5), y+height         )
+            left =   slice(x                , int(x+width*0.5) )
+            right =  slice(int(x+width*0.5) , x+width          )
+
+            lt_cell =  image[top,left]
+            lb_cell =  image[bottom,left]
+            rt_cell =  image[top,right]
+            rb_cell =  image[bottom,right]
+
+            lt_area = ('lt', len(lt_cell[lt_cell > 0.5]))
+            lb_area = ('lb', len(lb_cell[lb_cell > 0.5]))
+            rt_area = ('rt', len(rt_cell[rt_cell > 0.5]))
+            rb_area = ('rb', len(rb_cell[rb_cell > 0.5]))
+
+            area_lst = [lt_area, lb_area, rt_area, rb_area]
+            area_lst = sorted(area_lst, key = lambda x : x[1], reverse=True)
+            direction = self.calc_arrow_direction(area_lst)
+
             text = str(round(likelihood, 3))
-            cv2.putText(image_debug, text, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 1, cv2.LINE_AA)
+            cv2.putText(image_debug, text, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+            cv2.putText(image_debug, direction, (x, y-30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+            bboxes.append(bbox)
 
-        for i in range(len(template_contours)):
-            color = (np.random.randint(100,255), np.random.randint(100,255), np.random.randint(100,255))
-            template_debug = cv2.drawContours(template_debug, template_contours, i, color, 1)
+            class_msg.label_names.append(direction)
+            class_msg.label_proba.append(1)
 
-        cv2.namedWindow('image_debug', cv2.WINDOW_NORMAL)
-        cv2.imshow('image_debug', image_debug)
+            rect_array_msg.rects.append(rect_msg)
+
+        # cv2.namedWindow('image_debug', cv2.WINDOW_NORMAL)
+        # cv2.imshow('image_debug', image_debug)
+
+        imgmsg = self.bridge.cv2_to_imgmsg(image_debug, encoding='bgr8')
+
+        imgmsg.header = msg.header
+        rect_array_msg.header = msg.header
+        class_msg.header = msg.header
+
+        self.debug_pub.publish(imgmsg)
+        self.rects_pub.publish(rect_array_msg)
+        self.class_pub.publish(class_msg)
 
         cv2.waitKey(50)
 
