@@ -129,12 +129,13 @@ class ArrowRecognition():
         bboxes = []
         index_pairs = sorted(index_pairs, key=lambda x: x[2])
         for incr, index_pair in enumerate(index_pairs):
-            color = self.colors[incr]
             i, j, likelihood, area = index_pair
-            image_debug = cv2.drawContours(image_debug, image_contours, i, color, 2)
+            image_debug = cv2.drawContours(image_debug, image_contours, i, (0,0,255), 2)
             bboxes.append(cv2.boundingRect(image_contours[i]))
 
-        for x, y, width, height in list(set(bboxes)):
+        for incr, bbox in enumerate(list(set(bboxes))):
+            color = (0,0,255)
+            x, y, width, height = bbox
             rect_msg = Rect()
             image_debug = cv2.rectangle(
                 image_debug, (x, y), (x + width, y + height), color, 1)
