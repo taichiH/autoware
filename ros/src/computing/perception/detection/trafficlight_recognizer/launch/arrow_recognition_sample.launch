@@ -5,7 +5,7 @@
   <arg name="binary_thresh" default="150" />
   <arg name="pair_thresh" default="10" />
   <arg name="area_thresh" default="300" />
-  <arg name="dilate_kernel_size" default="5" />
+  <arg name="dilate_kernel_size" default="3" />
 
 
   <node name="image_publisher"
