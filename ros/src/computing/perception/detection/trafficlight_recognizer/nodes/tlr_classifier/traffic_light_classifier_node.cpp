@@ -1,10 +1,10 @@
-#include "trafficlight_classifier.h"
+#include "traffic_light_classifier.h"
 
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "trafficlight_classifier");
 
-    TrafficLightClassifier classifier;
+    tlr_classifier::TrafficLightClassifierNode classifier;
     classifier.run();
 
     return 0;

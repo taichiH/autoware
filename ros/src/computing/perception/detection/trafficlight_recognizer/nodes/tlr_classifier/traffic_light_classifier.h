@@ -12,13 +12,16 @@
 #include <std_msgs/Header.h>
 #include <cv_bridge/cv_bridge.h>
 
-#include <autoware_msgs/TrafficLightStates.h>
+#include <autoware_msgs/TrafficLightStateArray.h>
 #include <autoware_msgs/TrafficLightState.h>
+#include <autoware_msgs/LampStateArray.h>
 #include <autoware_msgs/LampState.h>
 
-namespace tlr_classifier {
+namespace tlr_classifier
+{
 
-    class Utils {
+    class Utils
+    {
     public:
 
         int get_area(const cv::Mat& image);
@@ -26,13 +29,14 @@ namespace tlr_classifier {
         template<typename T>
             bool in_vector(const T& c, const typename T::value_type& v);
 
-        bool merge_msg(autoware_msgs::LampStateArray::ConstPtr& color_lamp_states,
-                       autoware_msgs::LampStateArray::ConstPtr& arrow_lamp_states,
+        bool merge_msg(const autoware_msgs::LampStateArray::ConstPtr& color_lamp_states,
+                       const autoware_msgs::LampStateArray::ConstPtr& arrow_lamp_states,
                        autoware_msgs::LampStateArray::ConstPtr& lamp_states);
 
     };
 
-    class ColorClassifier {
+    class ColorClassifier
+    {
     public:
 
         enum Lamp {
@@ -54,7 +58,9 @@ namespace tlr_classifier {
 
         ColorClassifier() {}
 
-        ~ColorClassifier();
+        ~ColorClassifier() {};
+
+        bool get_params(const ros::NodeHandle& pnh);
 
         bool hsv_filter(const cv::Mat &input_image,
                         std::vector<cv::Mat> &output_images);
@@ -62,20 +68,29 @@ namespace tlr_classifier {
         bool get_color_ratios(const cv::Mat &input_images,
                               std::vector<float> &ratios);
 
-        bool get_lamp_states(autoware_msgs::LampStateArray::ConstPtr>& states
+        float moving_average_filter(std::vector<float> ratios);
+
+        bool get_lamp_states(autoware_msgs::LampStateArray::ConstPtr& states,
                              std::vector<float> ratios);
 
 
+    private:
+
+        std::vector<cv::Scalar> lower_ranges_;
+
+        std::vector<cv::Scalar> upper_ranges_;
+
     };
 
-    class ArrowClassifier {
+    class ArrowClassifier
+    {
     public:
         enum Position {
             LEFTTOP,
             LEFTBOTTOM,
             RIGHTTOP,
             RIGHTBOTOM,
-        }
+        };
 
         enum Lamp {
             LEFT = 0,
@@ -94,13 +109,21 @@ namespace tlr_classifier {
 
         ArrowClassifier() {}
 
-        ~ArrowClassifier();
+        ~ArrowClassifier() {};
+
+        bool get_shape(cv::Mat& image, std::vector<std::vector<cv::Point> >& contours);
+
+        bool calc_arrow_direction(const cv::Mat& image, const cv::Rect rect, autoware_msgs::LampState::ConstPtr& state);
+
+        bool load_template(const std::string path);
+
+        bool get_params(const ros::NodeHandle& pnh);
 
     };
 
 
-
-    class TrafficLightClassifierNode {
+    class TrafficLightClassifierNode
+    {
     public:
 
         // variables
@@ -126,14 +149,11 @@ namespace tlr_classifier {
 
         // functions
 
+        void callback(const sensor_msgs::Image::ConstPtr& msg);
+
         void run();
 
 
-    private:
-
-        std::vector<cv::Scalar> lower_ranges_;
-
-        std::vector<cv::Scalar> upper_ranges_;
 
     }; // TrafficLightClassifier
 

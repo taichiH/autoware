@@ -131,6 +131,17 @@ add_dependencies(region_tlr
   ${catkin_EXPORTED_TARGETS}
   )
 
+### tlr_classifir ###
+add_executable(tlr_classifier
+  nodes/tlr_classifier/traffic_light_classifier_node.cpp
+  nodes/tlr_classifier/traffic_light_classifier.cpp
+  )
+
+target_link_libraries(tlr_classifier
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+  )
+
 ### feat_proj ###
 # include_directories(
 #         ${catkin_INCLUDE_DIRS}
@@ -179,6 +190,7 @@ EXECUTE_PROCESS(
 include_directories(
   include
   nodes/tlr_tuner/
+  nodes/tlr_classifier/
   ${catkin_INCLUDE_DIRS}
   ${vector_map_INCLUDE_DIRS}
   ${autoware_msgs_INCLUDE_DIRS}
