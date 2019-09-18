@@ -1,6 +1,11 @@
 #ifndef TRAFFIC_LIGHT_CLASSIFIER_H
 #define TRAFFIC_LIGHT_CLASSIFIER_H
 
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv/cv.hpp>
+
+
 #include <ros/ros.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
@@ -31,13 +36,19 @@ namespace tlr_classifier
 
         bool merge_msg(const autoware_msgs::LampStateArray::ConstPtr& color_lamp_states,
                        const autoware_msgs::LampStateArray::ConstPtr& arrow_lamp_states,
-                       autoware_msgs::LampStateArray::ConstPtr& lamp_states);
+                       autoware_msgs::LampStateArray& lamp_states);
 
     };
 
     class ColorClassifier
     {
     public:
+
+        enum HSV {
+            Hue = 0,
+            Sat = 1,
+            Val = 2,
+        };
 
         enum Lamp {
             GREEN = 0,
@@ -53,6 +64,7 @@ namespace tlr_classifier
 
         float ratios_thresh_ = 0.35;
 
+        Utils utils_;
 
         // funtions
 
@@ -65,12 +77,12 @@ namespace tlr_classifier
         bool hsv_filter(const cv::Mat &input_image,
                         std::vector<cv::Mat> &output_images);
 
-        bool get_color_ratios(const cv::Mat &input_images,
+        bool get_color_ratios(const std::vector<cv::Mat> &input_images,
                               std::vector<float> &ratios);
 
         float moving_average_filter(std::vector<float> ratios);
 
-        bool get_lamp_states(autoware_msgs::LampStateArray::ConstPtr& states,
+        bool get_lamp_states(autoware_msgs::LampStateArray& states,
                              std::vector<float> ratios);
 
 
@@ -89,7 +101,7 @@ namespace tlr_classifier
             LEFTTOP,
             LEFTBOTTOM,
             RIGHTTOP,
-            RIGHTBOTOM,
+            RIGHTBOTTOM,
         };
 
         enum Lamp {
@@ -105,6 +117,8 @@ namespace tlr_classifier
 
         int dilation_size_ = 3;
 
+        Utils utils_;
+
         // functions
 
         ArrowClassifier() {}
@@ -113,7 +127,7 @@ namespace tlr_classifier
 
         bool get_shape(cv::Mat& image, std::vector<std::vector<cv::Point> >& contours);
 
-        bool calc_arrow_direction(const cv::Mat& image, const cv::Rect rect, autoware_msgs::LampState::ConstPtr& state);
+        bool calc_arrow_direction(const cv::Mat& image, const cv::Rect rect, autoware_msgs::LampState& state);
 
         bool load_template(const std::string path);
 
