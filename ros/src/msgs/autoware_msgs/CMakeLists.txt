@@ -53,6 +53,11 @@ add_message_files(
             TrafficLightResult.msg
             TrafficLightResultArray.msg
 
+            TrafficLightStateArray.msg
+            TrafficLightState.msg
+            LampState.msg
+            LampStateArray.msg
+
             AccelCmd.msg
             AdjustXY.msg
             BrakeCmd.msg
