@@ -57,6 +57,7 @@ add_message_files(
             TrafficLightState.msg
             LampState.msg
             LampStateArray.msg
+            StampedRoi.msg
 
             AccelCmd.msg
             AdjustXY.msg
