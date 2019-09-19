@@ -31,6 +31,7 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
   kcf_ros
   nodelet
+  eigen_conversions
   )
 
 find_package(OpenCV REQUIRED)
@@ -131,7 +132,12 @@ add_dependencies(region_tlr
   ${catkin_EXPORTED_TARGETS}
   )
 
-### tlr_classifir ###
+### tlr_classifier ###
+include_directories(
+  nodes/tlr_classifier/
+  ${catkin_INCLUDE_DIRS}
+  )
+
 add_executable(tlr_classifier
   nodes/tlr_classifier/traffic_light_classifier_node.cpp
   nodes/tlr_classifier/traffic_light_classifier.cpp
@@ -142,13 +148,23 @@ target_link_libraries(tlr_classifier
   ${OpenCV_LIBS}
   )
 
+### tlr_tracker ###
+include_directories(
+  nodes/tlr_tracker/
+  ${CMAKE_SOURCE_DIR}/nodes/tlr_tracker/include
+  ${catkin_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
+  ${EIGEN_INCLUDE_DIRS}
+  ${CMAKE_BINARY_DIR}//nodes/tlr_tracker/
+  ${CMAKE_SOURCE_DIR}/nodes/tlr_tracker/libs/src/
+  ${CMAKE_SOURCE_DIR}/nodes/tlr_tracker/libs/src/piotr_fhog
+  ${CMAKE_SOURCE_DIR}/nodes/tlr_tracker/libs/src/cn
+  )
+
+add_subdirectory(nodes/tlr_tracker/libs/src)
+
+
 ### feat_proj ###
-# include_directories(
-#         ${catkin_INCLUDE_DIRS}
-#         ${vector_map_INCLUDE_DIRS}
-#         ${autoware_msgs_INCLUDE_DIRS}
-#         ${Eigen3_INCLUDE_DIRS}
-# )
 
 add_executable(feat_proj
   nodes/feat_proj/feat_proj.cpp
@@ -163,22 +179,6 @@ add_dependencies(feat_proj
   ${catkin_EXPORTED_TARGETS}
   )
 
-### feat_proj_bbox ###
-# add_executable(feat_proj_bbox
-#   nodes/feat_proj/feat_proj_bbox.cpp
-#   )
-
-add_library(${PROJECT_NAME} SHARED
-  nodes/feat_proj/feat_proj_bbox.cpp
-  )
-target_link_libraries(${PROJECT_NAME}
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBRARIES}
-  )
-
-# add_dependencies(feat_proj_bbox
-#   ${catkin_EXPORTED_TARGETS}
-#   )
 
 ### tlr_tuner ###
 EXECUTE_PROCESS(
@@ -190,7 +190,6 @@ EXECUTE_PROCESS(
 include_directories(
   include
   nodes/tlr_tuner/
-  nodes/tlr_classifier/
   ${catkin_INCLUDE_DIRS}
   ${vector_map_INCLUDE_DIRS}
   ${autoware_msgs_INCLUDE_DIRS}
@@ -287,6 +286,18 @@ target_link_libraries(label_maker
   Qt5::Widgets
   ${OPENGL_LIBRARIES}
   )
+
+
+add_library(${PROJECT_NAME} SHARED
+  nodes/feat_proj/feat_proj_bbox.cpp
+  nodes/tlr_tracker/src/kcf_tracker.cpp)
+
+target_link_libraries(
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+  ${EIGEN_LIBRARIES}
+  kcf)
 
 
 ### region_tlr_ssd ###

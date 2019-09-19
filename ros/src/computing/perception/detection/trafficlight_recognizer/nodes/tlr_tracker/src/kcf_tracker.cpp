@@ -9,7 +9,6 @@ namespace trafficlight_recognizer
         pnh_ = getPrivateNodeHandle();
 
         pnh_.getParam("debug_log", debug_log_);
-        pnh_.getParam("debug_view", debug_view_);
         pnh_.getParam("kernel_sigma", kernel_sigma_);
         pnh_.getParam("cell_size", cell_size_);
         pnh_.getParam("num_scales", num_scales_);
@@ -17,93 +16,33 @@ namespace trafficlight_recognizer
         pnh_.getParam("interpolation_frequency", interpolation_frequency_);
         pnh_.getParam("offset", offset_);
 
-        if (debug_log_) {
-            std::cout << "kernel_sigma: " << kernel_sigma_ << std::endl;
-            std::cout << "cell_size: " << cell_size_ << std::endl;
-            std::cout << "num_scales: " << num_scales_ << std::endl;
-            std::cout << "interpolation frequency: " << interpolation_frequency_ << std::endl;
-        }
+        // publisher
+        debug_image_pub_ =  pnh_.advertise<sensor_msgs::Image>("output_image", 1);
+        output_rects_pub_ = pnh_.advertise<autoware_msgs::StampedRoi>("output_rect", 1);
 
-        debug_image_pub_ = pnh_.advertise<sensor_msgs::Image>("output_image", 1);
-        croped_image_pub_ = pnh_.advertise<sensor_msgs::Image>("output_croped_image", 1);
-        output_rect_pub_ = pnh_.advertise<kcf_ros::Rect>("output_rect", 1);
+        // subscriber for single callback
+        boxes_sub = pnh_.subscribe
+            ("input_yolo_detected_boxes", 1, &KcfTrackerROS::boxes_callback, this);
 
-        boxes_sub =
-            pnh_.subscribe("input_yolo_detected_boxes", 1, &KcfTrackerROS::boxes_callback, this);
+        // subscribers for message filter callback
+        image_sub_.subscribe
+            (pnh_, "input_raw_image", 1);
+        stamped_roi_sub_.subscribe
+            (pnh_, "input_nearest_roi_rect", 1);
 
-        sub_raw_image_.subscribe(pnh_, "input_raw_image", 1);
-        sub_nearest_roi_rect_.subscribe(pnh_, "input_nearest_roi_rect", 1);
-
+        // register callback
         if (is_approximate_sync_){
             approximate_sync_ =
                 boost::make_shared<message_filters::Synchronizer<ApproximateSyncPolicy> >(1000);
-            approximate_sync_->connectInput(sub_raw_image_,
-                                            sub_nearest_roi_rect_);
-            approximate_sync_->registerCallback(boost::bind
-                                                (&KcfTrackerROS::callback, this, _1, _2));
+            approximate_sync_->connectInput(image_sub_, stamped_roi_sub_);
+            approximate_sync_->registerCallback
+                (boost::bind(&KcfTrackerROS::callback, this, _1, _2));
         } else {
             sync_  =
                 boost::make_shared<message_filters::Synchronizer<SyncPolicy> >(1000);
-            sync_->connectInput(sub_raw_image_,
-                                sub_nearest_roi_rect_);
-            sync_->registerCallback(boost::bind
-                                    (&KcfTrackerROS::callback, this, _1, _2));
-        }
-    }
-
-    void KcfTrackerROS::visualize(cv::Mat& image,
-                                  const cv::Rect& rect,
-                                  const cv::Rect& nearest_roi_rect,
-                                  double frames,
-                                  float box_movement_ratio,
-                                  float tracker_conf,
-                                  float tracking_time,
-                                  std::string mode)
-    {
-        cv::putText(image, "frame: " + std::to_string(frames),
-                    cv::Point(50, 50), cv::FONT_HERSHEY_SIMPLEX, 0.8,
-                    cv::Scalar(0, 255, 0), 1, CV_AA);
-        cv::putText(image, "kernel_sigma: " + std::to_string(kernel_sigma_),
-                    cv::Point(50, 100), cv::FONT_HERSHEY_SIMPLEX, 0.8,
-                    cv::Scalar(0, 255, 0), 1, CV_AA);
-        cv::putText(image, "cell_size: " + std::to_string(cell_size_),
-                    cv::Point(50, 150), cv::FONT_HERSHEY_SIMPLEX, 0.8,
-                    cv::Scalar(0, 255, 0), 1, CV_AA);
-        cv::putText(image, "num_scales: " + std::to_string(num_scales_),
-                    cv::Point(50, 200), cv::FONT_HERSHEY_SIMPLEX, 0.8,
-                    cv::Scalar(0, 255, 0), 1, CV_AA);
-        cv::putText(image, "box_movement_ratio: " + std::to_string(box_movement_ratio),
-                    cv::Point(50, 250), cv::FONT_HERSHEY_SIMPLEX, 0.8,
-                    cv::Scalar(0, 255, 0), 1, CV_AA);
-        cv::putText(image, "interpolation freq: " + std::to_string(interpolation_frequency_),
-                    cv::Point(50, 300), cv::FONT_HERSHEY_SIMPLEX, 0.8,
-                    cv::Scalar(0, 255, 0), 1, CV_AA);
-        cv::putText(image, "offset: " + std::to_string(offset_),
-                    cv::Point(50, 350), cv::FONT_HERSHEY_SIMPLEX, 0.8,
-                    cv::Scalar(0, 255, 0), 1, CV_AA);
-        cv::putText(image, "mode: " + mode,
-                    cv::Point(50, 400), cv::FONT_HERSHEY_SIMPLEX, 0.8,
-                    cv::Scalar(0, 255, 0), 1, CV_AA);
-        cv::putText(image, "tracker_conf: " + std::to_string(tracker_conf),
-                    cv::Point(50, 450), cv::FONT_HERSHEY_SIMPLEX, 0.8,
-                    cv::Scalar(0, 255, 0), 1, CV_AA);
-        cv::putText(image, "trackeing_time: " + std::to_string(tracking_time),
-                    cv::Point(50, 500), cv::FONT_HERSHEY_SIMPLEX, 0.8,
-                    cv::Scalar(0, 255, 0), 1, CV_AA);
-
-        if (mode == "init") {
-            cv::rectangle(image, rect, CV_RGB(0,0,255), 2);
-        } else {
-            cv::rectangle(image, rect, CV_RGB(0,255,0), 2);
-        }
-
-        cv::rectangle(image, cv::Rect(nearest_roi_rect.x, nearest_roi_rect.y,
-                                      nearest_roi_rect.width, nearest_roi_rect.height),
-                      CV_RGB(255,0,0), 2);
-
-        if (debug_view_){
-            cv::imshow("output", image);
-            cv::waitKey(5);
+            sync_->connectInput(image_sub_, stamped_roi_sub_);
+            sync_->registerCallback
+                (boost::bind(&KcfTrackerROS::callback, this, _1, _2));
         }
     }
 
@@ -119,23 +58,8 @@ namespace trafficlight_recognizer
         }
     }
 
-    void KcfTrackerROS::publish_messages(const cv::Mat& image, const cv::Mat& croped_image,
-                                         const cv::Rect& rect, bool changed)
+    void KcfTrackerROS::publish_messages(const cv::Mat& image, const cv::Rect& rect)
     {
-        kcf_ros::Rect output_rect;
-        output_rect.x = rect.x; // left top x
-        output_rect.y = rect.y; // left top y
-        output_rect.width = rect.width;
-        output_rect.height = rect.height;
-        output_rect.changed = changed;
-        output_rect.header = header_;
-        output_rect_pub_.publish(output_rect);
-        debug_image_pub_.publish(cv_bridge::CvImage(header_,
-                                                    sensor_msgs::image_encodings::BGR8,
-                                                    image).toImageMsg());
-        croped_image_pub_.publish(cv_bridge::CvImage(header_,
-                                                     sensor_msgs::image_encodings::BGR8,
-                                                     croped_image).toImageMsg());
     }
 
     bool KcfTrackerROS::calc_gaussian(double& likelihood,
@@ -383,9 +307,6 @@ namespace trafficlight_recognizer
 
                     if (image_buffer.size() - min_index == 1) {
                         cv::Mat croped_image = image_buffer.at(i)(init_box_on_raw_image).clone();
-                        cv::Mat vis_image = image_buffer.at(i).clone();
-                        visualize(vis_image, init_box_on_raw_image, rect_buffer.at(i), image_stamps.at(i), 0, 0, 0, "init");
-                        publish_messages(vis_image, croped_image, init_box_on_raw_image, signal_changed_);
                     }
 
                     try {
@@ -451,46 +372,18 @@ namespace trafficlight_recognizer
     }
 
 
-    void KcfTrackerROS::boxes_callback(const autoware_msgs::DetectedObjectArray::ConstPtr& detected_boxes){
-        boost::mutex::scoped_lock lock(mutex_);
-        detected_boxes_ = detected_boxes;
-        detected_boxes_stamp_ = detected_boxes_->header.stamp.toSec();
-        boxes_callback_cnt_++;
-    }
-
-
-    void KcfTrackerROS::callback(const sensor_msgs::Image::ConstPtr& raw_image_msg,
-                                 const kcf_ros::Rect::ConstPtr& nearest_roi_rect_msg)
+    bool KcfTrackerROS::track(ImageInfoPtr& image_info, sensor_msgs::RegionOfInterest& tracked_rect)
     {
-        boost::mutex::scoped_lock lock(mutex_);
-        std::cerr << "------------------" << __func__ << std::endl;
-
-        if (cnt_ == 0 and debug_view_) {
-            cv::namedWindow("output", CV_WINDOW_NORMAL);
-            cv::resizeWindow("output", 1400, 1000);
-        }
-
-        cv::Mat image;
-        load_image(image, raw_image_msg);
-        raw_image_width_, raw_image_height_ = image.cols, image.rows;
-
-        ImageInfoPtr image_info(new ImageInfo(image,
-                                              cv::Rect(nearest_roi_rect_msg->x,
-                                                       nearest_roi_rect_msg->y,
-                                                       nearest_roi_rect_msg->width,
-                                                       nearest_roi_rect_msg->height),
-                                              nearest_roi_rect_msg->signal,
-                                              raw_image_msg->header.stamp.toSec()));
-        signal_ = nearest_roi_rect_msg->signal;
+        signal_ = image_info->signal;
         signal_changed_ = signal_ != prev_signal_;
-        offset_ = calc_offset(nearest_roi_rect_msg->height);
+        offset_ = calc_offset(tracked_rect.height);
 
         if (signal_changed_) {
             clear_buffer();
             increment_cnt();
             track_flag_ = false;
             tracker_initialized_ = false;
-            return;
+            return false;
         } else {
             create_buffer(image_info);
             track_flag_ = true;
@@ -504,12 +397,12 @@ namespace trafficlight_recognizer
                 ROS_WARN("cannot find correspond index ...");
                 track_flag_ = false;
                 increment_cnt();
-                return;
+                return false;
             }
 
             if (!box_interpolation(min_index)) {
                 increment_cnt();
-                return;
+                return false;
             }
             tracker_initialized_ = true;
 
@@ -520,38 +413,83 @@ namespace trafficlight_recognizer
             tracker_initialized_ = false;
             track_flag_ = false;
             increment_cnt();
-            return;
+            return false;
         } else {
             cv::Rect output_rect;
             float box_movement_ratio, tracker_conf, tracking_time;
             if (track_flag_ && tracker_initialized_) {
 
-                if (!update_tracker(image, output_rect, image_info->rect,
+                if (!update_tracker(image_info->image, output_rect, image_info->rect,
                                     box_movement_ratio, tracker_conf, tracking_time)) {
                     increment_cnt();
                     track_flag_ = false;
                     tracker_initialized_ = false;
-                    return;
+                    return false;
                 }
                 if (tracker_conf < 0.8) {
                     increment_cnt();
                     track_flag_ = false;
                     tracker_initialized_ = false;
-                    return;
+                    return false;
                 }
 
             } else {
                 increment_cnt();
-                return;
+                return false;
             }
 
-            cv::Mat croped_image = image(output_rect).clone();
-            cv::Mat vis_image = image.clone();
-            visualize(vis_image, output_rect, image_info->rect, raw_image_msg->header.stamp.toSec(),
-                      box_movement_ratio, tracker_conf, tracking_time*1000, "default");
-            publish_messages(vis_image, croped_image, output_rect, signal_changed_);
+            tracked_rect.x_offset = output_rect.x;
+            tracked_rect.y_offset = output_rect.y;
+            tracked_rect.width = output_rect.width;
+            tracked_rect.height = output_rect.height;
+
         }
         increment_cnt();
+
+        return true;
+    }
+
+    void KcfTrackerROS::boxes_callback(const autoware_msgs::DetectedObjectArray::ConstPtr& detected_boxes){
+        boost::mutex::scoped_lock lock(mutex_);
+        detected_boxes_ = detected_boxes;
+        detected_boxes_stamp_ = detected_boxes_->header.stamp.toSec();
+        boxes_callback_cnt_++;
+    }
+
+
+    void KcfTrackerROS::callback(const sensor_msgs::Image::ConstPtr& image_msg,
+                                 const autoware_msgs::StampedRoi::ConstPtr& stamped_roi_msg)
+    {
+        boost::mutex::scoped_lock lock(mutex_);
+
+        cv::Mat image;
+        load_image(image, image_msg);
+        raw_image_width_, raw_image_height_ = image.cols, image.rows;
+
+        autoware_msgs::StampedRoi output_rects;
+        for (int i=0; i<stamped_roi_msg->roi_array.size(); ++i)
+            {
+                sensor_msgs::RegionOfInterest region_of_interest = stamped_roi_msg->roi_array.at(i);
+                cv::Rect roi = cv::Rect(region_of_interest.x_offset,
+                                        region_of_interest.y_offset,
+                                        region_of_interest.width,
+                                        region_of_interest.height);
+                cv::Mat croped_image = image(roi);
+                ImageInfoPtr image_info(new ImageInfo(croped_image,
+                                                      roi,
+                                                      stamped_roi_msg->signal_id,
+                                                      image_msg->header.stamp.toSec()));
+                sensor_msgs::RegionOfInterest tracked_rect;
+                track(image_info, tracked_rect);
+                output_rects.roi_array.push_back(tracked_rect);
+            }
+
+
+        output_rects.header = header_;
+        output_rects_pub_.publish(output_rects);
+        debug_image_pub_.publish(cv_bridge::CvImage(header_,
+                                                    sensor_msgs::image_encodings::BGR8,
+                                                    image).toImageMsg());
     }
 } // namespace trafficlight_recognizer
 

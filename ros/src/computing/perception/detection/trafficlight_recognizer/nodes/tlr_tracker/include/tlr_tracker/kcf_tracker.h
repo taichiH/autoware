@@ -1,5 +1,5 @@
-#ifndef _KCF_ROS_KCF_TRACKER_
-#define _KCF_ROS_KCF_TRACKER_
+#ifndef _TLR_TRACKER_KCF_TRACKER_
+#define _TLR_TRACKER_KCF_TRACKER_
 
 #include <stdlib.h>
 
@@ -14,7 +14,7 @@
 #include <sensor_msgs/image_encodings.h>
 #include <std_msgs/Header.h>
 #include <cv_bridge/cv_bridge.h>
-#include <kcf_ros/Rect.h>
+#include <autoware_msgs/StampedRoi.h>
 #include <autoware_msgs/DetectedObjectArray.h>
 #include <eigen_conversions/eigen_msg.h>
 
@@ -71,11 +71,11 @@ namespace trafficlight_recognizer
     public:
         typedef message_filters::sync_policies::ExactTime<
             sensor_msgs::Image,
-            kcf_ros::Rect
+            autoware_msgs::StampedRoi
             > SyncPolicy;
         typedef message_filters::sync_policies::ApproximateTime<
             sensor_msgs::Image,
-            kcf_ros::Rect
+            autoware_msgs::StampedRoi
             > ApproximateSyncPolicy;
 
         typedef std::shared_ptr<ImageInfo> ImageInfoPtr;
@@ -87,7 +87,6 @@ namespace trafficlight_recognizer
 
         int callback_count_ = 0;
         bool debug_log_ = false;
-        bool debug_view_ = false;
         double kernel_sigma_ = 0.5;
         double cell_size_ = 4;
         double num_scales_ = 7;
@@ -133,8 +132,7 @@ namespace trafficlight_recognizer
         ros::NodeHandle pnh_;
 
         ros::Publisher debug_image_pub_;
-        ros::Publisher croped_image_pub_;
-        ros::Publisher output_rect_pub_;
+        ros::Publisher output_rects_pub_;
 
         ros::Subscriber boxes_sub;
 
@@ -142,34 +140,21 @@ namespace trafficlight_recognizer
 
         boost::shared_ptr<message_filters::Synchronizer<SyncPolicy> > sync_;
         boost::shared_ptr<message_filters::Synchronizer<ApproximateSyncPolicy> > approximate_sync_;
-        message_filters::Subscriber<sensor_msgs::Image> sub_raw_image_;
-        message_filters::Subscriber<kcf_ros::Rect> sub_nearest_roi_rect_;
+        message_filters::Subscriber<sensor_msgs::Image> image_sub_;
+        message_filters::Subscriber<autoware_msgs::StampedRoi> stamped_roi_sub_;
         message_filters::Subscriber<autoware_msgs::DetectedObjectArray> sub_yolo_detected_boxes_;
 
         virtual void onInit();
 
         virtual void boxes_callback(const autoware_msgs::DetectedObjectArray::ConstPtr& detected_boxes);
 
-        virtual void callback(const sensor_msgs::Image::ConstPtr& raw_image_msg,
-                              const kcf_ros::Rect::ConstPtr& nearest_roi_rect_msg);
+        virtual void callback(const sensor_msgs::Image::ConstPtr& image_msg,
+                              const autoware_msgs::StampedRoi::ConstPtr& stamped_roi_msg);
 
-        /* virtual void image_callback(const sensor_msgs::Image::ConstPtr& raw_image_msg); */
-
-
-
-        virtual void visualize(cv::Mat& image,
-                               const cv::Rect& rect,
-                               const cv::Rect& nearest_roi_rect,
-                               double frames,
-                               float box_movement_ratio = 0,
-                               float tracker_conf = 0,
-                               float tracking_time = 0,
-                               std::string mode = "");
 
         virtual void load_image(cv::Mat& image, const sensor_msgs::Image::ConstPtr& image_msg);
 
-        virtual void publish_messages(const cv::Mat& image, const cv::Mat& croped_image,
-                                      const cv::Rect& rect, bool changed);
+        virtual void publish_messages(const cv::Mat& image, const cv::Rect& rect);
 
         virtual bool calc_gaussian(double& likelihood,
                                    const Eigen::Vector2d& input_vec,
@@ -198,6 +183,8 @@ namespace trafficlight_recognizer
 
         virtual double calc_detection_score(const autoware_msgs::DetectedObject& box,
                                           const cv::Point2f& nearest_roi_image_center);
+
+        virtual bool track(ImageInfoPtr& image_info, sensor_msgs::RegionOfInterest& tracked_rect);
 
         virtual void increment_cnt();
 
