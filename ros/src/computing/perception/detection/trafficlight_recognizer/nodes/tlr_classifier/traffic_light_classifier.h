@@ -21,6 +21,7 @@
 #include <autoware_msgs/TrafficLightState.h>
 #include <autoware_msgs/LampStateArray.h>
 #include <autoware_msgs/LampState.h>
+#include <autoware_msgs/StampedRoi.h>
 
 namespace tlr_classifier
 {
@@ -34,8 +35,8 @@ namespace tlr_classifier
         template<typename T>
             bool in_vector(const T& c, const typename T::value_type& v);
 
-        bool merge_msg(const autoware_msgs::LampStateArray::ConstPtr& color_lamp_states,
-                       const autoware_msgs::LampStateArray::ConstPtr& arrow_lamp_states,
+        bool merge_msg(const autoware_msgs::LampStateArray& color_lamp_states,
+                       const autoware_msgs::LampStateArray& arrow_lamp_states,
                        autoware_msgs::LampStateArray& lamp_states);
 
     };
@@ -115,6 +116,10 @@ namespace tlr_classifier
 
         cv::Mat template_image_;
 
+        float pair_thresh_ = 3;
+
+        float area_thresh_ = 400;
+
         int dilation_size_ = 3;
 
         Utils utils_;
@@ -133,6 +138,18 @@ namespace tlr_classifier
 
         bool get_params(const ros::NodeHandle& pnh);
 
+        bool get_arrow_rects
+            (const std::vector< std::vector<cv::Point> >& image_contours,
+             const std::vector< std::vector<cv::Point> >& template_contours,
+             const cv::Mat& image,
+             std::vector<cv::Rect>& rects,
+             cv::Mat& debug_image);
+
+        bool get_index_pairs
+            (const std::vector< std::vector<cv::Point> >& image_contours,
+             const std::vector< std::vector<cv::Point> >& template_contours,
+             std::vector<std::pair<int, double>>& index_pairs);
+
     };
 
 
@@ -144,9 +161,21 @@ namespace tlr_classifier
 
         ros::NodeHandle nh_;
 
-        /* typedef std::shared_ptr<ColorClassifier> ColorClassifierPtr; */
+        typedef message_filters::sync_policies::ExactTime<
+            sensor_msgs::Image,
+            autoware_msgs::StampedRoi
+            > SyncPolicy;
+        typedef message_filters::sync_policies::ApproximateTime<
+            sensor_msgs::Image,
+            autoware_msgs::StampedRoi
+            > ApproximateSyncPolicy;
 
-        /* typedef std::shared_ptr<ArrowClassifier> ArrowClassifierPtr; */
+        boost::shared_ptr<message_filters::Synchronizer<SyncPolicy> > sync_;
+        boost::shared_ptr<message_filters::Synchronizer<ApproximateSyncPolicy> > approximate_sync_;
+        message_filters::Subscriber<sensor_msgs::Image> image_sub_;
+        message_filters::Subscriber<autoware_msgs::StampedRoi> stamped_roi_sub_;
+
+        bool is_approximate_sync_ = false;
 
         ColorClassifier color_classifier_;
 
@@ -154,19 +183,22 @@ namespace tlr_classifier
 
         Utils utils_;
 
-        ros::Subscriber image_sub_;
-
         ros::Publisher image_pub_;
 
-        ros::Publisher trafficlight_states_pub_;
-
+        ros::Publisher trafficlight_state_array_pub_;
 
         // functions
 
-        void callback(const sensor_msgs::Image::ConstPtr& msg);
+        void callback
+            (const sensor_msgs::Image::ConstPtr& image_msg,
+             const autoware_msgs::StampedRoi::ConstPtr& stamped_roi_msg);
+
+        bool classify
+            (const cv::Mat& image,
+             autoware_msgs::LampStateArray& lamp_state_array,
+             cv::Mat& debug_image);
 
         void run();
-
 
 
     }; // TrafficLightClassifier
