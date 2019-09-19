@@ -15,6 +15,7 @@
 #include <std_msgs/Header.h>
 #include <cv_bridge/cv_bridge.h>
 #include <autoware_msgs/StampedRoi.h>
+#include <autoware_msgs/StampedRoiArray.h>
 #include <autoware_msgs/DetectedObjectArray.h>
 #include <eigen_conversions/eigen_msg.h>
 
@@ -111,13 +112,15 @@ namespace trafficlight_recognizer
         int cnt_ = 0;
         int boxes_callback_cnt_ = 0;
         int prev_boxes_callback_cnt_ = 0;
-        double detected_boxes_stamp_ = 0.0;
         int buffer_size_ = 100;
+
+        double boxes_array_stamp_ = 0.0;
+
 
         KCF_Tracker tracker;
         /* ImageInfo image_info_; */
 
-        autoware_msgs::DetectedObjectArray::ConstPtr detected_boxes_;
+        autoware_msgs::StampedRoiArray::ConstPtr boxes_array_;
 
         std::vector<double> image_stamps;
         std::vector<cv::Mat> image_buffer;
@@ -146,7 +149,7 @@ namespace trafficlight_recognizer
 
         virtual void onInit();
 
-        virtual void boxes_callback(const autoware_msgs::DetectedObjectArray::ConstPtr& detected_boxes);
+        virtual void boxes_callback(const autoware_msgs::StampedRoiArray::ConstPtr& stamped_roi_array);
 
         virtual void callback(const sensor_msgs::Image::ConstPtr& image_msg,
                               const autoware_msgs::StampedRoi::ConstPtr& stamped_roi_msg);
@@ -160,14 +163,19 @@ namespace trafficlight_recognizer
                                    const Eigen::Vector2d& input_vec,
                                    const GaussianDistribution& ditribution);
 
-        virtual bool boxesToBox(const autoware_msgs::DetectedObjectArray::ConstPtr& detected_boxes,
+        virtual bool boxesToBox(const autoware_msgs::StampedRoi& boxes,
                                 const cv::Rect& roi_rect,
                                 cv::Rect& output_box,
                                 float& score);
 
+
+
         virtual bool get_min_index(int& min_index);
 
-        virtual bool box_interpolation(int min_index);
+        virtual bool box_interpolation(const int min_index,
+                                       const autoware_msgs::StampedRoi& projected_roi,
+                                       int idx);
+
 
         virtual bool create_buffer(const ImageInfoPtr& image_info);
 
@@ -181,10 +189,14 @@ namespace trafficlight_recognizer
         virtual bool update_tracker(cv::Mat& image, cv::Rect& output_rect, const cv::Rect& roi_rect,
                                     float& box_movement_ratio, float& tracker_conf, float& tracking_time);
 
-        virtual double calc_detection_score(const autoware_msgs::DetectedObject& box,
-                                          const cv::Point2f& nearest_roi_image_center);
+        virtual double calc_detection_score(const sensor_msgs::RegionOfInterest& box,
+                                            const cv::Point2f& nearest_roi_image_center);
 
-        virtual bool track(ImageInfoPtr& image_info, sensor_msgs::RegionOfInterest& tracked_rect);
+
+        virtual bool track(const ImageInfoPtr& image_info,
+                           const autoware_msgs::StampedRoi& projected_roi,
+                           sensor_msgs::RegionOfInterest& tracked_rect,
+                           int idx);
 
         virtual void increment_cnt();
 

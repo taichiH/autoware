@@ -58,7 +58,7 @@ add_message_files(
             LampState.msg
             LampStateArray.msg
             StampedRoi.msg
-
+            StampedRoiArray.msg
             AccelCmd.msg
             AdjustXY.msg
             BrakeCmd.msg

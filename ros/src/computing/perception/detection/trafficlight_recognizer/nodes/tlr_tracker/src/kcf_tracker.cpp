@@ -82,16 +82,16 @@ namespace trafficlight_recognizer
     }
 
 
-    double KcfTrackerROS::calc_detection_score(const autoware_msgs::DetectedObject& box,
+    double KcfTrackerROS::calc_detection_score(const sensor_msgs::RegionOfInterest& box,
                                                const cv::Point2f& nearest_roi_image_center)
     {
         double score = 0;
-        double w_score = box.score;
+        double w_score = 0.8;
         double w_distance = 0;
 
         bool gaussian_distance_ = false;
-        Eigen::Vector2d input_vec(box.x + box.width * 0.5,
-                                  box.y + box.height * 0.5);
+        Eigen::Vector2d input_vec(box.x_offset + box.width * 0.5,
+                                  box.y_offset + box.height * 0.5);
         Eigen::Vector2d center_vec(nearest_roi_image_center.x,
                                    nearest_roi_image_center.y);
 
@@ -116,52 +116,31 @@ namespace trafficlight_recognizer
         return score;
     }
 
-    bool KcfTrackerROS::boxesToBox(const autoware_msgs::DetectedObjectArray::ConstPtr& detected_boxes,
+    bool KcfTrackerROS::boxesToBox(const autoware_msgs::StampedRoi& boxes,
                                    const cv::Rect& roi_rect,
                                    cv::Rect& output_box,
                                    float& score)
     {
-        // TODO: choose a box from time-series data of detected boxes,
-        // NOW: closest box from croped roi image center
-
-        if (detected_boxes->objects.size() == 0) {
+        if (boxes.roi_array.size() == 0) {
             return false;
         }
 
         cv::Point2f nearest_roi_image_center(roi_rect.width * 0.5,
                                              roi_rect.height * 0.5);
 
-        bool has_traffic_light = false;
-
         float max_score = 0;
         float min_distance = std::pow(24, 24);
         cv::Rect box_on_nearest_roi_image;
 
-        for (autoware_msgs::DetectedObject box : detected_boxes->objects) {
-            if (box.label != "traffic light")
-                continue;
-            has_traffic_light = true;
-
-            // float center_to_detected_box_distance =
-            //     cv::norm(cv::Point2f(box.x + box.width * 0.5, box.y + box.height * 0.5) - nearest_roi_image_center);
-            // if (center_to_detected_box_distance < min_distance) {
-            //     output_box = cv::Rect(box.x, box.y, box.width, box.height);
-            //     score = box.score;
-            //     min_distance = center_to_detected_box_distance;
-            // }
+        for (sensor_msgs::RegionOfInterest box : boxes.roi_array) {
 
             float tmp_score = calc_detection_score(box, nearest_roi_image_center);
             if (tmp_score > max_score) {
-                output_box = cv::Rect(box.x, box.y, box.width, box.height);
+                output_box = cv::Rect(box.x_offset, box.y_offset, box.width, box.height);
                 score = tmp_score;
                 max_score = tmp_score;
             }
 
-            // ROS_INFO("detection score: %f, box: %d, %d, %d, %d", tmp_score, box.x, box.y, box.width, box.height);
-        }
-        if (!has_traffic_light) {
-            ROS_WARN("non traffic light label in detection results");
-            return false;
         }
 
         return true;
@@ -214,10 +193,10 @@ namespace trafficlight_recognizer
         }
 
         for (int i=image_stamps.size() - 1; i>=0; i--) {
-            if (image_stamps.at(i) - detected_boxes_stamp_ < 0) {
+            if (image_stamps.at(i) - boxes_array_stamp_ < 0) {
                 found_min_index = true;
-                if (std::abs(image_stamps.at(i+1) - detected_boxes_stamp_) <
-                    std::abs(image_stamps.at(i) - detected_boxes_stamp_)){
+                if (std::abs(image_stamps.at(i+1) - boxes_array_stamp_) <
+                    std::abs(image_stamps.at(i) - boxes_array_stamp_)){
                     min_index = i+1;
                 } else {
                     min_index = i;
@@ -276,7 +255,9 @@ namespace trafficlight_recognizer
     }
 
 
-    bool KcfTrackerROS::box_interpolation(int min_index){
+    bool KcfTrackerROS::box_interpolation(const int min_index,
+                                          const sensor_msgs::RegionOfInterest& projected_roi,
+                                          int idx){
         if (debug_log_)
             ROS_INFO("buffer_size: %d, freq: %d, calc size: %d",
                      image_buffer.size() - min_index,
@@ -288,7 +269,11 @@ namespace trafficlight_recognizer
                 cv::Mat debug_image = image_buffer.at(i).clone();
                 cv::Rect box_on_nearest_roi_image;
                 float detection_score;
-                if (boxesToBox(detected_boxes_, rect_buffer.at(i), box_on_nearest_roi_image, detection_score)) {
+
+                if (boxesToBox(boxes_array_->stamped_rois.at(idx),
+                               rect_buffer.at(i),
+                               box_on_nearest_roi_image,
+                               detection_score)) {
                     cv::Rect init_box_on_raw_image(box_on_nearest_roi_image.x + rect_buffer.at(i).x - offset_,
                                                    box_on_nearest_roi_image.y + rect_buffer.at(i).y - offset_,
                                                    box_on_nearest_roi_image.width + offset_ * 2,
@@ -372,7 +357,10 @@ namespace trafficlight_recognizer
     }
 
 
-    bool KcfTrackerROS::track(ImageInfoPtr& image_info, sensor_msgs::RegionOfInterest& tracked_rect)
+    bool KcfTrackerROS::track(const ImageInfoPtr& image_info,
+                              const sensor_msgs::RegionOfInterest& projected_roi,
+                              sensor_msgs::RegionOfInterest& tracked_rect,
+                              int idx)
     {
         signal_ = image_info->signal;
         signal_changed_ = signal_ != prev_signal_;
@@ -400,7 +388,7 @@ namespace trafficlight_recognizer
                 return false;
             }
 
-            if (!box_interpolation(min_index)) {
+            if (!box_interpolation(min_index, projected_roi, idx)) {
                 increment_cnt();
                 return false;
             }
@@ -449,16 +437,16 @@ namespace trafficlight_recognizer
         return true;
     }
 
-    void KcfTrackerROS::boxes_callback(const autoware_msgs::DetectedObjectArray::ConstPtr& detected_boxes){
+    void KcfTrackerROS::boxes_callback(const autoware_msgs::StampedRoiArray::ConstPtr& boxes_array){
         boost::mutex::scoped_lock lock(mutex_);
-        detected_boxes_ = detected_boxes;
-        detected_boxes_stamp_ = detected_boxes_->header.stamp.toSec();
+        boxes_array_ = boxes_array;
+        boxes_array_stamp_ = boxes_array_->header.stamp.toSec();
         boxes_callback_cnt_++;
     }
 
 
     void KcfTrackerROS::callback(const sensor_msgs::Image::ConstPtr& image_msg,
-                                 const autoware_msgs::StampedRoi::ConstPtr& stamped_roi_msg)
+                                 const autoware_msgs::StampedRoi::ConstPtr& projected_roi_msg)
     {
         boost::mutex::scoped_lock lock(mutex_);
 
@@ -467,20 +455,21 @@ namespace trafficlight_recognizer
         raw_image_width_, raw_image_height_ = image.cols, image.rows;
 
         autoware_msgs::StampedRoi output_rects;
-        for (int i=0; i<stamped_roi_msg->roi_array.size(); ++i)
+        for (int i=0; i<projected_roi_msg->roi_array.size(); ++i)
             {
-                sensor_msgs::RegionOfInterest region_of_interest = stamped_roi_msg->roi_array.at(i);
-                cv::Rect roi = cv::Rect(region_of_interest.x_offset,
-                                        region_of_interest.y_offset,
-                                        region_of_interest.width,
-                                        region_of_interest.height);
+                sensor_msgs::RegionOfInterest projected_roi =
+                    projected_roi_msg->roi_array.at(i);
+                cv::Rect roi = cv::Rect(projected_roi.x_offset,
+                                        projected_roi.y_offset,
+                                        projected_roi.width,
+                                        projected_roi.height);
                 cv::Mat croped_image = image(roi);
                 ImageInfoPtr image_info(new ImageInfo(croped_image,
                                                       roi,
-                                                      stamped_roi_msg->signal_id,
+                                                      projected_roi_msg->signal_id,
                                                       image_msg->header.stamp.toSec()));
                 sensor_msgs::RegionOfInterest tracked_rect;
-                track(image_info, tracked_rect);
+                track(image_info, projected_roi, tracked_rect, i);
                 output_rects.roi_array.push_back(tracked_rect);
             }
 
