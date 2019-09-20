@@ -462,7 +462,7 @@ namespace trafficlight_recognizer
                 cv::Mat croped_image = image(roi);
                 ImageInfoPtr image_info(new ImageInfo(croped_image,
                                                       roi,
-                                                      projected_roi_msg->signal_id,
+                                                      projected_roi_msg->signals.at(i),
                                                       image_msg->header.stamp.toSec()));
                 sensor_msgs::RegionOfInterest tracked_rect;
                 track(image_info, tracked_rect, i);

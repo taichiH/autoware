@@ -99,12 +99,6 @@ set(CMAKE_CXX_FLAGS "-O2 -Wall -Wunused-variable ${CMAKE_CXX_FLAGS}")
 ###########
 ## Build ##
 ###########
-add_library(
-  libcontext lib/Context.cpp
-  )
-add_dependencies(libcontext
-  ${catkin_EXPORTED_TARGETS}
-  )
 
 add_library(
   libutils lib/utils.cpp
@@ -147,7 +141,7 @@ add_subdirectory(nodes/tlr_tracker/libs/src)
 ### nodelet ###
 add_library(${PROJECT_NAME} SHARED
   nodes/feat_proj/feat_proj_bbox.cpp
-  nodes/tlr_tracker/src/kcf_tracker.cpp)
+  nodes/tlr_tracker/kcf_tracker.cpp)
 
 target_link_libraries(
   ${PROJECT_NAME}

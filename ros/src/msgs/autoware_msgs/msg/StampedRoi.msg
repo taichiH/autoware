@@ -1,3 +1,3 @@
 std_msgs/Header header
 sensor_msgs/RegionOfInterest[] roi_array
-int32 signal_id
+int32[] signals

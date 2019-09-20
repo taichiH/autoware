@@ -16,12 +16,10 @@
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/image_encodings.h>
 #include <cv_bridge/cv_bridge.h>
+
 #include <autoware_msgs/Signals.h>
-#include <autoware_msgs/DetectedObject.h>
-#include <autoware_msgs/DetectedObjectArray.h>
-#include <kcf_ros/Rect.h>
-#include <jsk_recognition_msgs/BoundingBox.h>
-#include <visualization_msgs/Marker.h>
+#include <autoware_msgs/StampedRoi.h>
+#include <sensor_msgs/RegionOfInterest.h>
 
 namespace trafficlight_recognizer
 {
@@ -51,11 +49,7 @@ namespace trafficlight_recognizer
     ros::NodeHandle nh_;
     ros::NodeHandle pnh_;
 
-    ros::Publisher mask_image_pub;
-    ros::Publisher nearest_roi_image_pub;
-    ros::Publisher nearest_roi_rect_pub;
-    ros::Publisher nearest_bbox_pub;
-    ros::Publisher visualization_line_pub;
+    ros::Publisher projected_rois_pub_;
 
     boost::shared_ptr<message_filters::Synchronizer<SyncPolicy> > sync_;
     boost::shared_ptr<message_filters::Synchronizer<ApproximateSyncPolicy> > approximate_sync_;
@@ -65,6 +59,7 @@ namespace trafficlight_recognizer
     virtual void onInit();
     virtual void callback(const sensor_msgs::Image::ConstPtr& in_image_msg,
                           const autoware_msgs::Signals::ConstPtr& signal_msg);
+
   private:
   }; // class FeatProjBBox
 } // namespace trafficlight_recognizer
