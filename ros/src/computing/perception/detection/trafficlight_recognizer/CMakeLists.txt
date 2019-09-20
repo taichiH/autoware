@@ -29,7 +29,6 @@ find_package(catkin REQUIRED COMPONENTS
   autoware_msgs
   vector_map
   image_transport
-  kcf_ros
   nodelet
   eigen_conversions
   )
@@ -142,7 +141,7 @@ add_subdirectory(nodes/tlr_tracker/libs/src)
 ### nodelet ###
 add_library(${PROJECT_NAME} SHARED
   nodes/feat_proj/feat_proj_bbox.cpp
-  nodes/tlr_tracker/kcf_tracker.cpp)
+  nodes/tlr_tracker/kcf_tracker_node.cpp)
 
 target_link_libraries(
   ${PROJECT_NAME}
