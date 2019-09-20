@@ -255,9 +255,7 @@ namespace trafficlight_recognizer
     }
 
 
-    bool KcfTrackerROS::box_interpolation(const int min_index,
-                                          const sensor_msgs::RegionOfInterest& projected_roi,
-                                          int idx){
+    bool KcfTrackerROS::box_interpolation(const int min_index, int idx) {
         if (debug_log_)
             ROS_INFO("buffer_size: %d, freq: %d, calc size: %d",
                      image_buffer.size() - min_index,
@@ -358,7 +356,6 @@ namespace trafficlight_recognizer
 
 
     bool KcfTrackerROS::track(const ImageInfoPtr& image_info,
-                              const sensor_msgs::RegionOfInterest& projected_roi,
                               sensor_msgs::RegionOfInterest& tracked_rect,
                               int idx)
     {
@@ -388,7 +385,7 @@ namespace trafficlight_recognizer
                 return false;
             }
 
-            if (!box_interpolation(min_index, projected_roi, idx)) {
+            if (!box_interpolation(min_index, idx)) {
                 increment_cnt();
                 return false;
             }
@@ -469,7 +466,7 @@ namespace trafficlight_recognizer
                                                       projected_roi_msg->signal_id,
                                                       image_msg->header.stamp.toSec()));
                 sensor_msgs::RegionOfInterest tracked_rect;
-                track(image_info, projected_roi, tracked_rect, i);
+                track(image_info, tracked_rect, i);
                 output_rects.roi_array.push_back(tracked_rect);
             }
 

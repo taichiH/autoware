@@ -168,14 +168,9 @@ namespace trafficlight_recognizer
                                 cv::Rect& output_box,
                                 float& score);
 
-
-
         virtual bool get_min_index(int& min_index);
 
-        virtual bool box_interpolation(const int min_index,
-                                       const autoware_msgs::StampedRoi& projected_roi,
-                                       int idx);
-
+        virtual bool box_interpolation(const int min_index, int idx);
 
         virtual bool create_buffer(const ImageInfoPtr& image_info);
 
@@ -194,9 +189,10 @@ namespace trafficlight_recognizer
 
 
         virtual bool track(const ImageInfoPtr& image_info,
-                           const autoware_msgs::StampedRoi& projected_roi,
                            sensor_msgs::RegionOfInterest& tracked_rect,
                            int idx);
+
+
 
         virtual void increment_cnt();
 
