@@ -28,6 +28,30 @@ namespace trafficlight_recognizer
   class FeatProjBBox : public nodelet::Nodelet
   {
   public:
+
+    float z_max = 100;
+
+    float z_min = 20;
+
+    int w_max = 350;
+
+    int w_min = 50;
+
+    int h_max = 200;
+
+    int h_min = 50;
+
+    void onInit();
+
+    void callback(const sensor_msgs::Image::ConstPtr& image_msg,
+                  const autoware_msgs::Signals::ConstPtr& signal_msg);
+
+    bool extract(const cv::Size& image_size,
+                 const std::vector<autoware_msgs::ExtractedPosition>& signals,
+                 autoware_msgs::StampedRoi& projected_rois);
+
+    cv::Size calc_projected_area(float z);
+
   private:
 
     ros::NodeHandle nh_;
@@ -56,34 +80,9 @@ namespace trafficlight_recognizer
 
     std::shared_ptr<Utils> utils_;
 
-    float z_max = 100;
-
-    float z_min = 20;
-
-    int w_max = 350;
-
-    int w_min = 50;
-
-    int h_max = 200;
-
-    int h_min = 50;
-
-    int prev_signal = 0;
-
     bool debug_ = true;
 
     bool is_approximate_sync_ = true;
-
-
-    void onInit();
-
-    void callback(const sensor_msgs::Image::ConstPtr& in_image_msg,
-                  const autoware_msgs::Signals::ConstPtr& signal_msg);
-
-    bool extract(const cv::Mat image,
-                 const std::vector<autoware_msgs::ExtractedPosition> signals,
-                 autoware_msgs::StampedRoi projected_rois);
-
 
   }; // class FeatProjBBox
 

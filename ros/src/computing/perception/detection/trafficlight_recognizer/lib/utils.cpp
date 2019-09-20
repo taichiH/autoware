@@ -49,6 +49,25 @@ namespace trafficlight_recognizer
       }
     catch (cv_bridge::Exception& e)
       {
+        ROS_ERROR("Failed to convert sensor_msgs::Image to cv::Mat \n%s", e.what());
+        return false;
+      }
+
+    return true;
+  }
+
+  bool Utils::fit_in_frame(cv::Point& lt, cv::Point& rb, const cv::Size& size)
+  {
+    try
+      {
+        if (rb.x > size.width) rb.x = size.width;
+        if (rb.y > size.height) rb.y = size.height;
+        if (lt.x < 0)  lt.x = 0;
+        if (lt.y < 0) lt.y = 0;
+      }
+    catch (cv::Exception& e )
+      {
+        ROS_ERROR("Failed to fit bounding rect in size [%d, %d] \n%s", size.width, size.height, e.what());
         return false;
       }
 

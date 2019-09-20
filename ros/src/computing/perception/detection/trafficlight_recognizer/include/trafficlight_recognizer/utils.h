@@ -5,6 +5,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv/cv.hpp>
 
+#include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
 
@@ -36,6 +37,8 @@ namespace trafficlight_recognizer
                        autoware_msgs::LampStateArray& lamp_states);
 
         bool rosmsg2cvmat(const sensor_msgs::Image::ConstPtr& image_msg, cv::Mat& image);
+
+        bool fit_in_frame(cv::Point& lt, cv::Point& rb, const cv::Size& size);
 
         template<typename T>
           inline bool in_vector(const T& c, const typename T::value_type& v)

@@ -20,6 +20,8 @@ namespace trafficlight_recognizer
     sub_image_.subscribe(pnh_, "input_image", 1);
     sub_signal_.subscribe(pnh_, "input_signal", 1);
 
+    utils_ = std::make_shared<Utils>();
+
     if (is_approximate_sync_){
       approximate_sync_ =
         boost::make_shared<message_filters::Synchronizer<ApproximateSyncPolicy> >(1000);
@@ -32,61 +34,72 @@ namespace trafficlight_recognizer
     }
   }
 
-  bool FeatProjBBox::extract(const cv::Mat image,
-                             const std::vector<autoware_msgs::ExtractedPosition> signals,
-                             autoware_msgs::StampedRoi projected_rois)
+  cv::Size FeatProjBBox::calc_projected_area(float z)
   {
-    for (auto signal : signals) {
-      if (int(signal.u) < 0 || int(signal.u) > image.cols ||
-          int(signal.v) < 0 || int(signal.v) > image.rows) {
-        continue;
+    cv::Size projected_area;
+
+    // remove outlier
+    if (z > z_max) z = z_max;
+    if (z < z_min) z = z_min;
+
+    projected_area.width = w_min + (z_max - z) * (w_max - w_min) / (z_max - z_min);
+    projected_area.height = h_min + (z_max - z) * (h_max - h_min) / (z_max - z_min);
+
+    return projected_area;
+  }
+
+  bool FeatProjBBox::extract(const cv::Size& image_size,
+                             const std::vector<autoware_msgs::ExtractedPosition>& signals,
+                             autoware_msgs::StampedRoi& projected_rois)
+  {
+    if (image_size.width == 0 || image_size.height == 0)
+      {
+        ROS_ERROR("image_size is invalid value size[%d, %d]",
+                  image_size.width, image_size.height);
+        return false;
       }
 
-      float z_diff = z_max - z_min;
-      int w_diff = w_max - w_min;
-      int h_diff = h_max - h_min;
-      float z = float(signal.z);
-      if (z > z_max) z = z_max;
-      if (z < z_min) z = z_min;
+    for (auto signal : signals) {
 
-      int width_ = w_min + (z_max - z) * w_diff / z_diff;
-      int height_ = h_min + (z_max - z) * h_diff / z_diff;
+      int u = static_cast<int>(signal.u);
+      int v = static_cast<int>(signal.v);
+      int z = static_cast<float>(signal.z);
+      if (u < 0 || u > image_size.width || v < 0 || v > image_size.height)
+        continue;
 
-      cv::Point lt = cv::Point(int(signal.u) - width_ * 0.5, int(signal.v) - height_ * 0.5);
-      cv::Point rb = cv::Point(int(signal.u) + width_ * 0.5, int(signal.v) + height_ * 0.5);
-      if (rb.x > image.cols)  width_ = image.cols - lt.x;
-      if (rb.y > image.rows)  height_ = image.rows - lt.y;
-      if (lt.x < 0)  lt.x = 0;
-      if (lt.y < 0) lt.y = 0;
+      cv::Size projected_area = calc_projected_area(z);
+      cv::Point lt = cv::Point(u - projected_area.width * 0.5,
+                               v - projected_area.height * 0.5);
+      cv::Point rb = cv::Point(u + projected_area.width * 0.5,
+                               v + projected_area.height * 0.5);
+
+      if ( !utils_->fit_in_frame(lt, rb, image_size) )
+        {
+          ROS_ERROR("failed to fit in frame");
+        return false;
+        }
 
       sensor_msgs::RegionOfInterest roi_rect;
       roi_rect.x_offset = lt.x;
       roi_rect.y_offset = lt.y;
       roi_rect.width = rb.x - lt.x;
       roi_rect.height = rb.y - lt.y;
-      projected_rois.signals.push_back(static_cast<int>(signal.signalId));
       projected_rois.roi_array.push_back(roi_rect);
-
+      projected_rois.signals.push_back(static_cast<int>(signal.signalId));
     }
 
     return true;
   }
 
-  void FeatProjBBox::callback(const sensor_msgs::Image::ConstPtr& in_image_msg,
+  void FeatProjBBox::callback(const sensor_msgs::Image::ConstPtr& image_msg,
                               const autoware_msgs::Signals::ConstPtr& signal_msg)
   {
     cv::Mat image;
-    try {
-      cv_bridge::CvImagePtr cv_image = cv_bridge::toCvCopy(in_image_msg, "bgr8");
-      image = cv_image->image;
-    } catch (cv_bridge::Exception& e) {
-      ROS_ERROR("Could not convert from '%s' to 'bgr8'.", in_image_msg->encoding.c_str());
-      return;
-    }
+    utils_->rosmsg2cvmat(image_msg, image);
 
-    std::vector<autoware_msgs::ExtractedPosition> signals = signal_msg->Signals;
     autoware_msgs::StampedRoi projected_rois;
-    extract(image, signals, projected_rois);
+    extract(image.size(), signal_msg->Signals, projected_rois);
+
     projected_rois_pub_.publish(projected_rois);
   }
 
