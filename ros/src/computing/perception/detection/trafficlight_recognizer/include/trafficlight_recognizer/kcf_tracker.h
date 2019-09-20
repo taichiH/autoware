@@ -2,6 +2,7 @@
 #define _TLR_TRACKER_KCF_TRACKER_
 
 #include <stdlib.h>
+#include <time.h>
 
 #include <ros/ros.h>
 #include <nodelet/nodelet.h>

@@ -68,6 +68,9 @@ include_directories(
   ${autoware_msgs_INCLUDE_DIRS}
   ${Eigen3_INCLUDE_DIRS}
   ${Opencv_INCLUDE_DIRS}
+  ${CMAKE_SOURCE_DIR}/nodes/tlr_tracker/libs/src/
+  ${CMAKE_SOURCE_DIR}/nodes/tlr_tracker/libs/src/piotr_fhog
+  ${CMAKE_SOURCE_DIR}/nodes/tlr_tracker/libs/src/cn
   )
 
 catkin_package(
@@ -88,8 +91,7 @@ catkin_package(
   visualization_msgs
   waypoint_follower
   image_transport
-  kcf_ros
-  LIBRARIES libcontext
+  LIBRARIES libutils
   )
 
 set(CMAKE_CXX_FLAGS "-O2 -Wall -Wunused-variable ${CMAKE_CXX_FLAGS}")
@@ -97,75 +99,33 @@ set(CMAKE_CXX_FLAGS "-O2 -Wall -Wunused-variable ${CMAKE_CXX_FLAGS}")
 ###########
 ## Build ##
 ###########
-add_library(libcontext lib/Context.cpp)
+add_library(
+  libcontext lib/Context.cpp
+  )
 add_dependencies(libcontext
   ${catkin_EXPORTED_TARGETS}
   )
 
-### tl_switch ###
-add_executable(tl_switch
-  nodes/tl_switch/tl_switch.cpp
+add_library(
+  libutils lib/utils.cpp
   )
-
-target_link_libraries(tl_switch
-  ${catkin_LIBRARIES}
-  )
-
-add_dependencies(tl_switch
-  ${catkin_EXPORTED_TARGETS}
-  )
-
-### region_tlr ###
-add_executable(region_tlr
-  nodes/region_tlr/region_tlr.cpp
-  nodes/region_tlr/TrafficLightDetector.cpp
-  )
-
-target_link_libraries(region_tlr
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBS}
-  libcontext
-  ${OPENGL_LIBRARIES}
-  )
-
-add_dependencies(region_tlr
+add_dependencies(libutils
   ${catkin_EXPORTED_TARGETS}
   )
 
 ### tlr_classifier ###
-include_directories(
-  nodes/tlr_classifier/
-  ${catkin_INCLUDE_DIRS}
-  )
-
 add_executable(tlr_classifier
   nodes/tlr_classifier/traffic_light_classifier_node.cpp
   nodes/tlr_classifier/traffic_light_classifier.cpp
   )
-
 target_link_libraries(tlr_classifier
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
+  libutils
   )
-
-### tlr_tracker ###
-include_directories(
-  nodes/tlr_tracker/
-  ${CMAKE_SOURCE_DIR}/nodes/tlr_tracker/include
-  ${catkin_INCLUDE_DIRS}
-  ${OpenCV_INCLUDE_DIRS}
-  ${EIGEN_INCLUDE_DIRS}
-  ${CMAKE_BINARY_DIR}//nodes/tlr_tracker/
-  ${CMAKE_SOURCE_DIR}/nodes/tlr_tracker/libs/src/
-  ${CMAKE_SOURCE_DIR}/nodes/tlr_tracker/libs/src/piotr_fhog
-  ${CMAKE_SOURCE_DIR}/nodes/tlr_tracker/libs/src/cn
-  )
-
-add_subdirectory(nodes/tlr_tracker/libs/src)
 
 
 ### feat_proj ###
-
 add_executable(feat_proj
   nodes/feat_proj/feat_proj.cpp
   )
@@ -180,114 +140,11 @@ add_dependencies(feat_proj
   )
 
 
-### tlr_tuner ###
-EXECUTE_PROCESS(
-  COMMAND pkg-config --variable=host_bins Qt5Core
-  OUTPUT_VARIABLE Qt5BIN
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-  )
-
-include_directories(
-  include
-  nodes/tlr_tuner/
-  ${catkin_INCLUDE_DIRS}
-  ${vector_map_INCLUDE_DIRS}
-  ${autoware_msgs_INCLUDE_DIRS}
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_BINARY_DIR}
-  )
-
-qt5_wrap_ui(tlr_tuner_ui_mainwindow nodes/tlr_tuner/mainwindow.ui)
-
-add_executable(tlr_tuner
-  nodes/tlr_tuner/tlr_tuner.cpp
-  nodes/tlr_tuner/mainwindow.cpp
-  nodes/tlr_tuner/mainwindow.h
-  nodes/tlr_tuner/tunerBody.cpp
-  nodes/tlr_tuner/tunerBody.h
-  ${tlr_tuner_ui_mainwindow}
-  )
-
-set_target_properties(tlr_tuner
-  PROPERTIES COMPILE_FLAGS "-fPIC"
-  )
-
-target_link_libraries(tlr_tuner
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBS}
-  Qt5::Core
-  Qt5::Widgets
-  ${OPENGL_LIBRARIES}
-  )
+### tlr_tracker ###
+add_subdirectory(nodes/tlr_tracker/libs/src)
 
 
-### roi_extractor ###
-include_directories(
-  ${catkin_INCLUDE_DIRS}
-  ${vector_map_INCLUDE_DIRS}
-  ${autoware_msgs_INCLUDE_DIRS}
-  include
-  )
-
-add_executable(roi_extractor
-  nodes/roi_extractor/roi_extractor.cpp
-  )
-
-target_link_libraries(roi_extractor
-  ${catkin_LIBRARIES}
-  libcontext
-  )
-
-add_dependencies(region_tlr
-  ${catkin_EXPORTED_TARGETS})
-
-
-### label_maker ###
-find_package(Qt5Core REQUIRED)
-find_package(Qt5Gui REQUIRED)
-find_package(Qt5Widgets REQUIRED)
-
-find_package(TinyXML REQUIRED)
-
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
-
-include_directories(
-  ${catkin_INCLUDE_DIRS}
-  ${vector_map_INCLUDE_DIRS}
-  ${autoware_msgs_INCLUDE_DIRS}
-  ${TinyXML_INCLUDE_DIRS}
-  nodes/label_maker/
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_BINARY_DIR}
-  )
-
-file(GLOB SOURCES "nodes/label_maker/*.cpp")
-file(GLOB HEADERS "nodes/label_maker/*.h")
-file(GLOB UI_SOURCES "nodes/label_maker/*.ui")
-
-qt5_wrap_ui(UI_HEADERS ${UI_SOURCES})
-
-add_executable(label_maker
-  ${SOURCES}
-  ${HEADERS}
-  ${UI_HEADERS}
-  )
-
-set_target_properties(label_maker
-  PROPERTIES COMPILE_FLAGS "-fPIC"
-  )
-
-target_link_libraries(label_maker
-  ${catkin_LIBRARIES}
-  ${TinyXML_LIBRARIES}
-  Qt5::Core
-  Qt5::Gui
-  Qt5::Widgets
-  ${OPENGL_LIBRARIES}
-  )
-
-
+### nodelet ###
 add_library(${PROJECT_NAME} SHARED
   nodes/feat_proj/feat_proj_bbox.cpp
   nodes/tlr_tracker/src/kcf_tracker.cpp)
@@ -298,115 +155,3 @@ target_link_libraries(
   ${OpenCV_LIBRARIES}
   ${EIGEN_LIBRARIES}
   kcf)
-
-
-### region_tlr_ssd ###
-##############################SSD'sFORK of CAFFE NEEDS TO BE PREVIOUSLY COMPILED####################
-set(SSD_CAFFE_PATH "$ENV{HOME}/ssdcaffe/distribute")
-####################################################################################################
-if (EXISTS "${SSD_CAFFE_PATH}")
-
-  find_package(CUDA REQUIRED)
-
-  add_executable(region_tlr_ssd
-    nodes/region_tlr_ssd/region_tlr_ssd.cpp
-    nodes/region_tlr_ssd/traffic_light_recognizer.cpp
-    )
-
-  target_link_libraries(region_tlr_ssd
-    ${catkin_LIBRARIES}
-    ${OpenCV_LIBS}
-    ${CUDA_LIBRARIES}
-    ${CUDA_CUBLAS_LIBRARIES}
-    ${CUDA_curand_LIBRARY}
-    ${SSD_CAFFE_PATH}/lib/libcaffe.so
-    glog
-    libcontext
-    )
-
-  target_include_directories(region_tlr_ssd PRIVATE
-    ${SSD_CAFFE_PATH}/include
-    ${CUDA_INCLUDE_DIRS}
-    nodes/region_tlr_ssd/
-    )
-
-  add_dependencies(region_tlr_ssd
-    ${catkin_EXPORTED_TARGETS}
-    )
-
-  install(TARGETS region_tlr_ssd
-    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-    )
-
-else ()                          # if(EXISTS "${SSD_CAFFE_PATH}")
-  message("'SSD/Caffe' is not installed. 'region_tlr_ssd' will not be built.")
-endif ()                         # if(EXISTS "${SSD_CAFFE_PATH}")
-
-
-install(TARGETS region_tlr feat_proj tlr_tuner roi_extractor label_maker
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-  )
-
-install(DIRECTORY include
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-  PATTERN ".svn" EXCLUDE
-  )
-
-install(DIRECTORY launch/
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
-  PATTERN ".svn" EXCLUDE)
-
-
-### region_tlr_mxnet ###
-##############################MXNET with CPP_PACKAGE NEEDS TO BE PREVIOUSLY COMPILED################
-#############Please follow README file for instructions#############################################
-set(MXNET_PATH "$ENV{HOME}/mxnet/")
-####################################################################################################
-if (EXISTS "${MXNET_PATH}")
-
-  find_package(CUDA REQUIRED)
-
-  add_executable(region_tlr_mxnet
-    nodes/region_tlr_mxnet/region_tlr_mxnet.cpp
-    nodes/region_tlr_mxnet/mxnet_traffic_light_recognizer.cpp
-    nodes/region_tlr_mxnet/region_tlr_mxnet.h
-    nodes/region_tlr_mxnet/mxnet_traffic_light_recognizer.h
-    )
-
-  target_link_libraries(region_tlr_mxnet
-    ${catkin_LIBRARIES}
-    ${OpenCV_LIBS}
-    ${CUDA_LIBRARIES}
-    ${CUDA_CUBLAS_LIBRARIES}
-    ${CUDA_curand_LIBRARY}
-    ${MXNET_PATH}/lib/libmxnet.so
-    libcontext
-    )
-
-  target_include_directories(region_tlr_mxnet PRIVATE
-    ${MXNET_PATH}/nnvm/include/
-    ${MXNET_PATH}/cpp-package/include/
-    ${MXNET_PATH}/include/
-    ${MXNET_PATH}/dmlc-core/include/
-    ${CUDA_INCLUDE_DIRS}
-    nodes/region_tlr_mxnet/
-    include
-    )
-
-  add_dependencies(region_tlr_mxnet
-    ${catkin_EXPORTED_TARGETS}
-    )
-
-  install(TARGETS region_tlr_mxnet
-    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-    )
-
-else ()
-  message("'MXNET Package' is not installed. 'region_tlr_mxnet' will not be built.")
-endif ()

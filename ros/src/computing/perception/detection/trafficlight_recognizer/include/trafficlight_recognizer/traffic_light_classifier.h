@@ -5,6 +5,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv/cv.hpp>
 
+#include "trafficlight_recognizer/utils.h"
 
 #include <ros/ros.h>
 #include <message_filters/subscriber.h>
@@ -23,23 +24,8 @@
 #include <autoware_msgs/LampState.h>
 #include <autoware_msgs/StampedRoi.h>
 
-namespace tlr_classifier
+namespace trafficlight_recognizer
 {
-
-    class Utils
-    {
-    public:
-
-        int get_area(const cv::Mat& image);
-
-        template<typename T>
-            bool in_vector(const T& c, const typename T::value_type& v);
-
-        bool merge_msg(const autoware_msgs::LampStateArray& color_lamp_states,
-                       const autoware_msgs::LampStateArray& arrow_lamp_states,
-                       autoware_msgs::LampStateArray& lamp_states);
-
-    };
 
     class ColorClassifier
     {
@@ -98,12 +84,6 @@ namespace tlr_classifier
     class ArrowClassifier
     {
     public:
-        enum Position {
-            LEFTTOP,
-            LEFTBOTTOM,
-            RIGHTTOP,
-            RIGHTBOTTOM,
-        };
 
         enum Lamp {
             LEFT = 0,

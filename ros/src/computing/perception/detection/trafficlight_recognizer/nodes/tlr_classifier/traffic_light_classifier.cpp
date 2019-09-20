@@ -1,51 +1,7 @@
-#include "traffic_light_classifier.h"
+#include "trafficlight_recognizer/traffic_light_classifier.h"
 
-namespace tlr_classifier
+namespace trafficlight_recognizer
 {
-
-    int Utils::get_area(const cv::Mat& image)
-    {
-        int cnt = 0;
-        for (int y=0; y<image.rows; ++y) {
-            for (int x=0; x<image.cols; ++x) {
-                if (image.at<uchar>(y, x) > 127)
-                    cnt++;
-            }
-        }
-        return cnt;
-    }
-
-    template<typename T>
-    bool Utils::in_vector(const T& c, const typename T::value_type& v)
-    {
-        return(c.end() != std::find(c.begin(), c.end(), v));
-    }
-
-    bool Utils::merge_msg(const autoware_msgs::LampStateArray& color_lamp_states,
-                          const autoware_msgs::LampStateArray& arrow_lamp_states,
-                          autoware_msgs::LampStateArray& lamp_states)
-    {
-            try
-                {
-                    for (auto state : color_lamp_states.states)
-                        {
-                            lamp_states.states.push_back(state);
-                        }
-
-                    for (auto state : arrow_lamp_states.states)
-                        {
-                            lamp_states.states.push_back(state);
-                        }
-                }
-            catch (...)
-                {
-                    return false;
-                }
-
-            return true;
-    }
-
-
 
     bool ColorClassifier::hsv_filter(const cv::Mat &input_image,
                                      std::vector<cv::Mat> &output_images)
@@ -228,41 +184,41 @@ namespace tlr_classifier
                                          rect.x + rect.width,
                                          rect.y + rect.height));
 
-        std::pair<ArrowClassifier::Position, float> lt_area =
-            std::make_pair(ArrowClassifier::Position::LEFTTOP, utils_.get_area(lt_cell));
-        std::pair<ArrowClassifier::Position, float> lb_area =
-            std::make_pair(ArrowClassifier::Position::LEFTBOTTOM, utils_.get_area(lb_cell));
-        std::pair<ArrowClassifier::Position, float> rt_area =
-            std::make_pair(ArrowClassifier::Position::RIGHTTOP, utils_.get_area(rt_cell));
-        std::pair<ArrowClassifier::Position, float> rb_area =
-            std::make_pair(ArrowClassifier::Position::RIGHTBOTTOM, utils_.get_area(rb_cell));
+        std::pair<Utils::Position, float> lt_area =
+            std::make_pair(Utils::Position::LEFTTOP, utils_.get_area(lt_cell));
+        std::pair<Utils::Position, float> lb_area =
+            std::make_pair(Utils::Position::LEFTBOTTOM, utils_.get_area(lb_cell));
+        std::pair<Utils::Position, float> rt_area =
+            std::make_pair(Utils::Position::RIGHTTOP, utils_.get_area(rt_cell));
+        std::pair<Utils::Position, float> rb_area =
+            std::make_pair(Utils::Position::RIGHTBOTTOM, utils_.get_area(rb_cell));
 
-        std::vector<std::pair<ArrowClassifier::Position, float>> area_list{lt_area, lb_area, rt_area, rb_area};
+        std::vector<std::pair<Utils::Position, float>> area_list{lt_area, lb_area, rt_area, rb_area};
 
         std::sort(area_list.begin(), area_list.end(),
-                  [](const std::pair<ArrowClassifier::Position, float> &left,
-                     const std::pair<ArrowClassifier::Position, float> &right)
+                  [](const std::pair<Utils::Position, float> &left,
+                     const std::pair<Utils::Position, float> &right)
                   {return left.second < right.second;});
 
-        std::vector<ArrowClassifier::Position> cells{area_list.at(0).first, area_list.at(1).first};
+        std::vector<Utils::Position> cells{area_list.at(0).first, area_list.at(1).first};
 
-        if (utils_.in_vector(cells, ArrowClassifier::Position::LEFTTOP) &&
-            utils_.in_vector(cells, ArrowClassifier::Position::RIGHTBOTTOM))
+        if (utils_.in_vector(cells, Utils::Position::LEFTTOP) &&
+            utils_.in_vector(cells, Utils::Position::RIGHTBOTTOM))
             {
                 state.type = autoware_msgs::LampState::UP;
             }
-        else if (utils_.in_vector(cells, ArrowClassifier::Position::LEFTBOTTOM) &&
-                 utils_.in_vector(cells, ArrowClassifier::Position::RIGHTBOTTOM))
+        else if (utils_.in_vector(cells, Utils::Position::LEFTBOTTOM) &&
+                 utils_.in_vector(cells, Utils::Position::RIGHTBOTTOM))
             {
                 state.type = autoware_msgs::LampState::DOWN;
             }
-        else if (utils_.in_vector(cells, ArrowClassifier::Position::LEFTTOP) &&
-                 utils_.in_vector(cells, ArrowClassifier::Position::LEFTBOTTOM))
+        else if (utils_.in_vector(cells, Utils::Position::LEFTTOP) &&
+                 utils_.in_vector(cells, Utils::Position::LEFTBOTTOM))
             {
                 state.type = autoware_msgs::LampState::LEFT;
             }
-        else if (utils_.in_vector(cells, ArrowClassifier::Position::RIGHTTOP) &&
-                 utils_.in_vector(cells, ArrowClassifier::Position::RIGHTBOTTOM))
+        else if (utils_.in_vector(cells, Utils::Position::RIGHTTOP) &&
+                 utils_.in_vector(cells, Utils::Position::RIGHTBOTTOM))
             {
                 state.type = autoware_msgs::LampState::RIGHT;
             }
