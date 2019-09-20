@@ -32,23 +32,11 @@ namespace trafficlight_recognizer
     }
   }
 
-  void FeatProjBBox::callback(const sensor_msgs::Image::ConstPtr& in_image_msg,
-                              const autoware_msgs::Signals::ConstPtr& signal_msg)
+  bool FeatProjBBox::extract(const cv::Mat image,
+                             const std::vector<autoware_msgs::ExtractedPosition> signals,
+                             autoware_msgs::StampedRoi projected_rois)
   {
-    cv::Mat image;
-    try {
-      cv_bridge::CvImagePtr cv_image = cv_bridge::toCvCopy(in_image_msg, "bgr8");
-      image = cv_image->image;
-    } catch (cv_bridge::Exception& e) {
-      ROS_ERROR("Could not convert from '%s' to 'bgr8'.", in_image_msg->encoding.c_str());
-      return;
-    }
-
-    float prev_z = 256 *256;
-
-    autoware_msgs::StampedRoi projected_rois;
-
-    for (auto signal : signal_msg->Signals) {
+    for (auto signal : signals) {
       if (int(signal.u) < 0 || int(signal.u) > image.cols ||
           int(signal.v) < 0 || int(signal.v) > image.rows) {
         continue;
@@ -81,8 +69,27 @@ namespace trafficlight_recognizer
 
     }
 
+    return true;
+  }
+
+  void FeatProjBBox::callback(const sensor_msgs::Image::ConstPtr& in_image_msg,
+                              const autoware_msgs::Signals::ConstPtr& signal_msg)
+  {
+    cv::Mat image;
+    try {
+      cv_bridge::CvImagePtr cv_image = cv_bridge::toCvCopy(in_image_msg, "bgr8");
+      image = cv_image->image;
+    } catch (cv_bridge::Exception& e) {
+      ROS_ERROR("Could not convert from '%s' to 'bgr8'.", in_image_msg->encoding.c_str());
+      return;
+    }
+
+    std::vector<autoware_msgs::ExtractedPosition> signals = signal_msg->Signals;
+    autoware_msgs::StampedRoi projected_rois;
+    extract(image, signals, projected_rois);
     projected_rois_pub_.publish(projected_rois);
   }
+
 } // namespace trafficlight_recognizer
 
 #include <pluginlib/class_list_macros.h>
