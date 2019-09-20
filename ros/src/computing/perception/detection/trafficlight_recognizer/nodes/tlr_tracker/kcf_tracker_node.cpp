@@ -1,4 +1,4 @@
-#include "trafficlight_recognizer/kcf_tracker.h"
+#include "trafficlight_recognizer/kcf_tracker_node.h"
 
 namespace trafficlight_recognizer
 {
@@ -74,6 +74,7 @@ namespace trafficlight_recognizer
         cv::Rect roi = cv::Rect(projected_roi.x_offset, projected_roi.y_offset,
                                 projected_roi.width, projected_roi.height);
         cv::Mat croped_image = image(roi);
+
         image_info_ = std::make_shared<ImageInfo>(croped_image,
                                                   roi,
                                                   projected_roi_msg->signals.at(i),

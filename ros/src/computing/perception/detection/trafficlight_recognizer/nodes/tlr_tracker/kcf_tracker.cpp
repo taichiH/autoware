@@ -3,7 +3,7 @@
 namespace trafficlight_recognizer
 {
 
-  double KcfTracker::calc_detection_score(const sensor_msgs::RegionOfInterest& box,
+  double KcfTracker::calc_detection_score(const cv::Mat& box,
                                           const cv::Point2f& nearest_roi_image_center)
   {
     // double score = 0;
@@ -38,7 +38,7 @@ namespace trafficlight_recognizer
   }
 
 
-  bool KcfTracker::boxesToBox(const autoware_msgs::StampedRoi& boxes,
+  bool KcfTracker::boxesToBox(const std::vector<cv::Rect>& boxes,
                               const cv::Rect& roi_rect,
                               cv::Rect& output_box,
                               float& score)
@@ -287,9 +287,9 @@ namespace trafficlight_recognizer
   }
 
 
-  bool KcfTracker::track(const ImageInfoPtr& image_info,
-                         sensor_msgs::RegionOfInterest& tracked_rect,
-                         int idx)
+  bool KcfTracker::run(const ImageInfoPtr& image_info,
+                       cv::Rect& tracked_rect,
+                       int idx)
   {
     // signal_ = image_info->signal;
     // signal_changed_ = signal_ != prev_signal_;

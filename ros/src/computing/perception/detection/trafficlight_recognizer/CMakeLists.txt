@@ -90,7 +90,9 @@ catkin_package(
   visualization_msgs
   waypoint_follower
   image_transport
-  LIBRARIES libutils
+  LIBRARIES
+  libutils
+  libtrafficlightkcf
   )
 
 set(CMAKE_CXX_FLAGS "-O2 -Wall -Wunused-variable ${CMAKE_CXX_FLAGS}")
@@ -137,6 +139,17 @@ add_dependencies(feat_proj
 ### tlr_tracker ###
 add_subdirectory(nodes/tlr_tracker/libs/src)
 
+add_library(libtrafficlightkcf
+  nodes/tlr_tracker/kcf_tracker.cpp
+  )
+
+target_link_libraries(libtrafficlightkcf
+  kcf ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+  )
+
+add_dependencies(libtrafficlightkcf
+  ${catkin_EXPORTED_TARGETS}
+  )
 
 ### nodelet ###
 add_library(${PROJECT_NAME} SHARED
@@ -148,8 +161,8 @@ target_link_libraries(
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
   ${EIGEN_LIBRARIES}
-  kcf
-  libutils)
+  libutils
+  libtrafficlightkcf)
 
 
 if(CATKIN_ENABLE_TESTING)
