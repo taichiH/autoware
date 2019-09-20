@@ -20,8 +20,9 @@
 #include <autoware_msgs/DetectedObjectArray.h>
 #include <eigen_conversions/eigen_msg.h>
 
-#include "kcf.h"
+#include "trafficlight_recognizer/utils.h"
 
+#include "kcf.h"
 
 
 namespace trafficlight_recognizer
@@ -53,18 +54,8 @@ namespace trafficlight_recognizer
           image = _image;
           rect = _rect;
       }
-      ~ImageInfo() {};
 
-      void init(const cv::Mat& _image = cv::Mat(3,3,CV_8UC3),
-                const cv::Rect& _rect= cv::Rect(0,0,0,0),
-                const int _signal = 0,
-                const double _stamp = 0.0) {
-          initialized = true;
-          stamp = _stamp;
-          signal = _signal;
-          image = _image;
-          rect = _rect;
-      }
+      ~ImageInfo() {};
 
     };
 
@@ -107,8 +98,7 @@ namespace trafficlight_recognizer
 
         float box_movement_thresh_ = 0.02;
 
-        int raw_image_width_ = 0;
-        int raw_image_height_ = 0;
+
 
         int cnt_ = 0;
         int boxes_callback_cnt_ = 0;
@@ -118,13 +108,20 @@ namespace trafficlight_recognizer
         double boxes_array_stamp_ = 0.0;
 
 
+        cv::Size original_image_size_;
+
         KCF_Tracker tracker;
-        /* ImageInfo image_info_; */
+
+        ImageInfoPtr image_info_;
+
+        std::shared_ptr<Utils> utils_;
 
         autoware_msgs::StampedRoiArray::ConstPtr boxes_array_;
 
         std::vector<double> image_stamps;
+
         std::vector<cv::Mat> image_buffer;
+
         std::vector<cv::Rect> rect_buffer;
 
 
