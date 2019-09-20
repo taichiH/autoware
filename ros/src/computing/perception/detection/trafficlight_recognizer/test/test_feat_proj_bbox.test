@@ -3,7 +3,7 @@
         pkg="jsk_perception" type="image_publisher.py"
         clear_params="true">
     <rosparam subst_value="true">
-      file_name: $(find trafficlight_recognizer)/test/trafficlight.jpg
+      file_name: $(find trafficlight_recognizer)/sample_images/trafficlight.jpg
       rate: 30
     </rosparam>
   </node>
