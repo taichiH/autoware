@@ -54,75 +54,40 @@ namespace trafficlight_recognizer
   public:
     typedef std::shared_ptr<ImageInfo> ImageInfoPtr;
 
-    ImageInfoPtr image_info_;
+    bool initialized_ = false;
 
-    double pi = 3.141592653589793;
+    KcfTracker(const int signal,
+               const cv::Rect& projected_roi,
+               const cv::Rect& init_box,
+               const cv::Mat& original_image,
+               const bool initialized);
 
-    int frames = 0;
+    bool run(cv::Rect& output_box);
 
-    int callback_count_ = 0;
-
-    bool tracker_initialized_ = false;
-
-    bool track_flag_ = false;
-
-    bool signal_changed_ = false;
-
-    int signal_ = 0;
-
-    int prev_signal_ = 0;
-
-    int queue_size_ = 2;
-
-    float box_movement_thresh_ = 0.02;
-
-    int cnt_ = 0;
-
-    int buffer_size_ = 100;
-
-    std::vector<double> image_stamps;
-
-    std::vector<cv::Mat> image_buffer;
-
-    std::vector<cv::Rect> rect_buffer;
-
-    std::vector<cv::Rect> tracker_results_buffer_;
-
-    bool boxesToBox(const std::vector<cv::Rect>& boxes,
-                    const cv::Rect& roi_rect,
-                    cv::Rect& output_box,
-                    float& score);
-
-    bool get_min_index(int& min_index);
-
-    bool box_interpolation(const int min_index, int idx);
-
-    bool create_buffer(const ImageInfoPtr& image_info);
-
-    bool clear_buffer();
-
-    bool create_tracker_results_buffer(const cv::Rect& bb);
-
-    float check_confidence(const std::vector<cv::Rect> results,
-                           float& box_movement_ratio);
-
-    bool update_tracker(cv::Mat& image, cv::Rect& output_rect, const cv::Rect& roi_rect,
-                        float& box_movement_ratio, float& tracker_conf, float& tracking_time);
-
-    double calc_detection_score(const cv::Mat& box,
-                                const cv::Point2f& nearest_roi_image_center);
-
-    bool run(const ImageInfoPtr& image_info,
-             cv::Rect& tracked_rect,
-             int idx);
-
-    void increment_cnt();
-
-    int calc_offset(int x);
 
   private:
 
   }; // class KcfTracker
+
+
+  class MultiKcfTracker
+  {
+  public:
+    typedef std::shared_ptr<KcfTracker> KcfTrackerPtr;
+
+    KcfTrackerPtr kcf_tracker_;
+
+    std::map<int, KcfTrackerPtr> tracker_map_;
+
+    bool run(const cv::Mat& original_image,
+             const std::vector<cv::Rect>& projected_rois,
+             const std::vector<int>& signals,
+             const std::vector<cv::Rect>& init_boxes,
+             std::vector<cv::Rect>& output_boxes);
+
+  private:
+
+  }; // MultiKcfTracker
 
 } // namespace trafficlight_recognizer
 

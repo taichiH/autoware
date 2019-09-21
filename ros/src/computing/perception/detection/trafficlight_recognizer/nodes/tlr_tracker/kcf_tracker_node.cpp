@@ -16,44 +16,34 @@ namespace trafficlight_recognizer
     pnh_.getParam("offset", offset_);
 
     utils_ = std::make_shared<Utils>();
+    multi_kcf_tracker_ = std::make_shared<MultiKcfTracker>();
 
-    // publisher
-    debug_image_pub_ =  pnh_.advertise<sensor_msgs::Image>("output_image", 1);
-    output_rects_pub_ = pnh_.advertise<autoware_msgs::StampedRoi>("output_rect", 1);
+    output_rois_pub_ = pnh_.advertise<autoware_msgs::StampedRoi>("output_rois", 1);
 
-    // subscriber for single callback
-    boxes_sub = pnh_.subscribe
-      ("input_yolo_detected_boxes", 1, &KcfTrackerROS::boxes_callback, this);
+    boxes_sub = pnh_.subscribe("input_yolo_detected_boxes", 1, &KcfTrackerROS::boxes_callback, this);
+    image_sub_.subscribe(pnh_, "input_raw_image", 1);
+    stamped_roi_sub_.subscribe(pnh_, "input_nearest_roi_rect", 1);
 
-    // subscribers for message filter callback
-    image_sub_.subscribe
-      (pnh_, "input_raw_image", 1);
-    stamped_roi_sub_.subscribe
-      (pnh_, "input_nearest_roi_rect", 1);
-
-    // register callback
     if (is_approximate_sync_){
       approximate_sync_ =
         boost::make_shared<message_filters::Synchronizer<ApproximateSyncPolicy> >(1000);
       approximate_sync_->connectInput(image_sub_, stamped_roi_sub_);
-      approximate_sync_->registerCallback
-        (boost::bind(&KcfTrackerROS::callback, this, _1, _2));
+      approximate_sync_->registerCallback(boost::bind(&KcfTrackerROS::callback, this, _1, _2));
     } else {
       sync_  =
         boost::make_shared<message_filters::Synchronizer<SyncPolicy> >(1000);
       sync_->connectInput(image_sub_, stamped_roi_sub_);
-      sync_->registerCallback
-        (boost::bind(&KcfTrackerROS::callback, this, _1, _2));
+      sync_->registerCallback(boost::bind(&KcfTrackerROS::callback, this, _1, _2));
     }
+
   }
 
 
-  void KcfTrackerROS::boxes_callback(const autoware_msgs::StampedRoiArray::ConstPtr& boxes_array)
+  void KcfTrackerROS::boxes_callback(const autoware_msgs::StampedRoi::ConstPtr& boxes)
   {
     boost::mutex::scoped_lock lock(mutex_);
-    boxes_array_ = boxes_array;
-    boxes_array_stamp_ = boxes_array_->header.stamp.toSec();
-    boxes_callback_cnt_++;
+    utils_->roismsg2cvrects(boxes->roi_array, detected_boxes_);
+    detected_boxes_stamp_ = boxes->header.stamp.toSec();
   }
 
 
@@ -62,35 +52,30 @@ namespace trafficlight_recognizer
   {
     boost::mutex::scoped_lock lock(mutex_);
 
-    cv::Mat image;
-    utils_->rosmsg2cvmat(image_msg, image);
+    cv::Mat original_image;
+    std::vector<cv::Rect> projected_rois;
 
-    original_image_size_ = image.size();
+    std::vector<cv::Rect> init_boxes;
+    utils_->roimsg2cvmat(image_msg, original_image);
+    utils_->roismsg2cvrects(projected_roi_msg->roi_array, projected_rois);
 
-    autoware_msgs::StampedRoi output_rects;
-    for (int i=0; i<projected_roi_msg->roi_array.size(); ++i)
-      {
-        auto projected_roi = projected_roi_msg->roi_array.at(i);
-        cv::Rect roi = cv::Rect(projected_roi.x_offset, projected_roi.y_offset,
-                                projected_roi.width, projected_roi.height);
-        cv::Mat croped_image = image(roi);
+    double init_box_stamp = detected_boxes_stamp_;
 
-        image_info_ = std::make_shared<ImageInfo>(croped_image,
-                                                  roi,
-                                                  projected_roi_msg->signals.at(i),
-                                                  projected_roi_msg->header.stamp.toSec());
-        sensor_msgs::RegionOfInterest tracked_rect;
-        // kcf_tracker_->run(image_info_, tracked_rect, i);
+    std::vectro<cv::Rect> output_boxes;
+    multi_kcf_tracker_->run(projected_roi_msg->signals,
+                            original_image,
+                            projected_rois,
+                            init_boxes,
+                            image_msg->header.stamp.toSec(),
+                            init_boxes_stamp,
+                            output_boxes);
 
-        output_rects.roi_array.push_back(tracked_rect);
-      }
+    autoware_msgs::StampedRoi output_rois_msg;
+    utils_->cvrects2roismsg(output_boxes, output_rois_msg);
 
+    output_rois_msg.header = projected_roi_msg->header;
+    output_rois_pub_.publish(output_rois_msg);
 
-    output_rects.header = header_;
-    output_rects_pub_.publish(output_rects);
-    debug_image_pub_.publish(cv_bridge::CvImage(header_,
-                                                sensor_msgs::image_encodings::BGR8,
-                                                image).toImageMsg());
   }
 
 } // namespace trafficlight_recognizer
