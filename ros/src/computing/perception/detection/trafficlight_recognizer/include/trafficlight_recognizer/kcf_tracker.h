@@ -1,5 +1,5 @@
-#ifndef _TLR_TRACKER_KCF_TRACKER_
-#define _TLR_TRACKER_KCF_TRACKER_
+#ifndef _TRAFFICLIGHT_RECOGNIZER_KCF_TRACKER_
+#define _TRAFFICLIGHT_RECOGNIZER_KCF_TRACKER_
 
 #include <iostream>
 #include <memory>
@@ -13,7 +13,8 @@
 namespace trafficlight_recognizer
 {
 
-  class GaussianDistribution{
+  class GaussianDistribution
+  {
   public:
     int d = 2;
     Eigen::Vector2d mean = Eigen::Vector2d(0,0);
@@ -23,7 +24,8 @@ namespace trafficlight_recognizer
   };
 
 
-  class ImageInfo {
+  class ImageInfo
+  {
   public:
     double stamp = 0.0;
     int signal = 0;

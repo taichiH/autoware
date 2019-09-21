@@ -1,5 +1,5 @@
-#ifndef _TLR_TRACKER_KCF_TRACKER_
-#define _TLR_TRACKER_KCF_TRACKER_
+#ifndef _TRAFFICLIGHT_RECOGNIZERR_KCF_TRACKER_NODE_
+#define _TRAFFICLIGHT_RECOGNIZERR_KCF_TRACKER_NODE_
 
 #include <stdlib.h>
 #include <time.h>
@@ -12,8 +12,8 @@
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
 
-#include "trafficlight_recognizer/utils.h"
 #include "trafficlight_recognizer/kcf_tracker.h"
+#include "trafficlight_recognizer/utils.h"
 
 namespace trafficlight_recognizer
 {

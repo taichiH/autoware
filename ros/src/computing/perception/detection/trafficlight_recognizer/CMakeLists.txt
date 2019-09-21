@@ -98,13 +98,15 @@ catkin_package(
 set(CMAKE_CXX_FLAGS "-O2 -Wall -Wunused-variable ${CMAKE_CXX_FLAGS}")
 
 ### utils ###
-add_library(
-  libutils lib/utils.cpp
+add_library(libutils
+  lib/utils.cpp
   )
+
 target_link_libraries(libutils
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
   )
+
 add_dependencies(libutils
   ${catkin_EXPORTED_TARGETS}
   )
@@ -144,7 +146,9 @@ add_library(libtrafficlightkcf
   )
 
 target_link_libraries(libtrafficlightkcf
-  kcf ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+  kcf
   )
 
 add_dependencies(libtrafficlightkcf
@@ -161,8 +165,9 @@ target_link_libraries(
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
   ${EIGEN_LIBRARIES}
+  libtrafficlightkcf
   libutils
-  libtrafficlightkcf)
+  )
 
 
 if(CATKIN_ENABLE_TESTING)

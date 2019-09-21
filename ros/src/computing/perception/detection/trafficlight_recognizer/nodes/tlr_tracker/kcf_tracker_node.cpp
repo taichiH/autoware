@@ -70,7 +70,7 @@ namespace trafficlight_recognizer
     autoware_msgs::StampedRoi output_rects;
     for (int i=0; i<projected_roi_msg->roi_array.size(); ++i)
       {
-        sensor_msgs::RegionOfInterest projected_roi = projected_roi_msg->roi_array.at(i);
+        auto projected_roi = projected_roi_msg->roi_array.at(i);
         cv::Rect roi = cv::Rect(projected_roi.x_offset, projected_roi.y_offset,
                                 projected_roi.width, projected_roi.height);
         cv::Mat croped_image = image(roi);
