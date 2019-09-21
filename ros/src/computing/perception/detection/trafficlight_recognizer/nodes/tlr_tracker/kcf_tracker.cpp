@@ -91,11 +91,11 @@ namespace trafficlight_recognizer
   bool MultiKcfTracker::pop_from_tracker_map(std::map<int, KcfTrackerPtr>& tracker_map,
                                              const std::vector<int>& signals)
   {
-    // for (auto [k, v] : tracker_map)
-    //   {
-    //     if ( !utils_->in_vector(signals, k) )
-    //       tracker_map.erase(k);
-    //   }
+    for (auto it = tracker_map.begin(); it != tracker_map.end(); ++it)
+      {
+        if ( signals.end() == std::find(signals.begin(), signals.end(), it->first) )
+          tracker_map.erase(it->first);
+      }
 
     return true;
   }
