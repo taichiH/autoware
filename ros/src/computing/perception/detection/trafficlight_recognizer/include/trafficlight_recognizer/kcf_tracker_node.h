@@ -48,11 +48,18 @@ namespace trafficlight_recognizer
 
     int buffer_size_ = 100;
 
+    int interpolation_frequency_ = 1;
+
+    int detected_boxes_stamp_;
+
+    std::vector<cv::Rect> detected_boxes_;
+
+
     ros::NodeHandle nh_;
 
     ros::NodeHandle pnh_;
 
-    ros::Publisher output_rects_pub_;
+    ros::Publisher output_rois_pub_;
 
     ros::Subscriber boxes_sub;
 

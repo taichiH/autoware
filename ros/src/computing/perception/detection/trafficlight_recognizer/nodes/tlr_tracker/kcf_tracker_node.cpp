@@ -16,7 +16,7 @@ namespace trafficlight_recognizer
     pnh_.getParam("buffer_size", buffer_size_);
 
     utils_ = std::make_shared<Utils>();
-    multi_kcf_tracker_ = std::make_shared<MultiKcfTracker>(buffer_size_);
+    multi_kcf_tracker_ = std::make_shared<MultiKcfTracker>(buffer_size_, interpolation_frequency_);
 
     output_rois_pub_ = pnh_.advertise<autoware_msgs::StampedRoi>("output_rois", 1);
 
@@ -55,7 +55,7 @@ namespace trafficlight_recognizer
     cv::Mat original_image;
     std::vector<cv::Rect> projected_rois;
     std::vector<cv::Rect> init_boxes;
-    utils_->roimsg2cvmat(image_msg, original_image);
+    utils_->rosmsg2cvmat(image_msg, original_image);
     utils_->roismsg2cvrects(projected_roi_msg->roi_array, projected_rois);
 
     std::vector<cv::Rect> output_boxes;
@@ -70,12 +70,11 @@ namespace trafficlight_recognizer
                             output_signals);
 
     autoware_msgs::StampedRoi output_rois_msg;
-    utils_->cvrects2roismsg(output_boxes, output_rois_msg);
+    utils_->cvrects2roismsg(output_boxes, output_rois_msg.roi_array);
 
-    output_rois_msg.signals =
-      std::copy(output_signals.begin(),
-                output_signals.end(),
-                std::back_inserter(output_signals));
+    std::copy(output_signals.begin(),
+              output_signals.end(),
+              std::back_inserter(output_rois_msg.signals));
 
     output_rois_msg.header = projected_roi_msg->header;
     output_rois_pub_.publish(output_rois_msg);
