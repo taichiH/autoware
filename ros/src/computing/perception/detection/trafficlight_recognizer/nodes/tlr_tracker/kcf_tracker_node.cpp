@@ -13,10 +13,10 @@ namespace trafficlight_recognizer
     pnh_.getParam("num_scales", num_scales_);
     pnh_.getParam("approximate_sync", is_approximate_sync_);
     pnh_.getParam("interpolation_frequency", interpolation_frequency_);
-    pnh_.getParam("offset", offset_);
+    pnh_.getParam("buffer_size", buffer_size_);
 
     utils_ = std::make_shared<Utils>();
-    multi_kcf_tracker_ = std::make_shared<MultiKcfTracker>();
+    multi_kcf_tracker_ = std::make_shared<MultiKcfTracker>(buffer_size_);
 
     output_rois_pub_ = pnh_.advertise<autoware_msgs::StampedRoi>("output_rois", 1);
 
@@ -54,24 +54,28 @@ namespace trafficlight_recognizer
 
     cv::Mat original_image;
     std::vector<cv::Rect> projected_rois;
-
     std::vector<cv::Rect> init_boxes;
     utils_->roimsg2cvmat(image_msg, original_image);
     utils_->roismsg2cvrects(projected_roi_msg->roi_array, projected_rois);
 
-    double init_box_stamp = detected_boxes_stamp_;
-
-    std::vectro<cv::Rect> output_boxes;
+    std::vector<cv::Rect> output_boxes;
+    std::vector<int> output_signals;
     multi_kcf_tracker_->run(projected_roi_msg->signals,
                             original_image,
                             projected_rois,
                             init_boxes,
                             image_msg->header.stamp.toSec(),
-                            init_boxes_stamp,
-                            output_boxes);
+                            detected_boxes_stamp_,
+                            output_boxes,
+                            output_signals);
 
     autoware_msgs::StampedRoi output_rois_msg;
     utils_->cvrects2roismsg(output_boxes, output_rois_msg);
+
+    output_rois_msg.signals =
+      std::copy(output_signals.begin(),
+                output_signals.end(),
+                std::back_inserter(output_signals));
 
     output_rois_msg.header = projected_roi_msg->header;
     output_rois_pub_.publish(output_rois_msg);

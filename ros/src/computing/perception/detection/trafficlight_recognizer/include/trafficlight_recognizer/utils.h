@@ -11,6 +11,7 @@
 
 #include <std_msgs/Header.h>
 #include <sensor_msgs/Image.h>
+#include <sensor_msgs/RegionOfInterest.h>
 #include <autoware_msgs/TrafficLightStateArray.h>
 #include <autoware_msgs/TrafficLightState.h>
 #include <autoware_msgs/LampStateArray.h>
@@ -41,6 +42,12 @@ namespace trafficlight_recognizer
                    autoware_msgs::LampStateArray& lamp_states);
 
     bool rosmsg2cvmat(const sensor_msgs::Image::ConstPtr& image_msg, cv::Mat& image);
+
+    bool roismsg2cvrects(const std::vector<sensor_msgs::RegionOfInterest>& rois,
+                         std::vector<cv::Rect>& rects);
+
+    bool cvrects2roismsg(const std::vector<cv::Rect>& rects,
+                         std::vector<sensor_msgs::RegionOfInterest>& rois);
 
     bool fit_in_frame(cv::Point& lt, cv::Point& rb, const cv::Size& size);
 

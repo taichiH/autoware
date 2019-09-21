@@ -56,6 +56,38 @@ namespace trafficlight_recognizer
     return true;
   }
 
+
+  bool Utils::roismsg2cvrects(const std::vector<sensor_msgs::RegionOfInterest>& rois,
+                              std::vector<cv::Rect>& rects)
+  {
+    for (auto roi : rois)
+      {
+        rects.push_back
+          (cv::Rect(roi.x_offset, roi.y_offset, roi.width, roi.height));
+      }
+
+    return true;
+  }
+
+
+  bool Utils::cvrects2roismsg(const std::vector<cv::Rect>& rects,
+                              std::vector<sensor_msgs::RegionOfInterest>& rois)
+
+  {
+    for (auto rect : rects)
+      {
+        sensor_msgs::RegionOfInterest roi;
+        roi.x_offset = rect.x;
+        roi.y_offset = rect.y;
+        roi.width = rect.width;
+        roi.height = rect.height;
+        rois.push_back(roi);
+      }
+
+    return true;
+  }
+
+
   bool Utils::fit_in_frame(cv::Point& lt, cv::Point& rb, const cv::Size& size)
   {
     try

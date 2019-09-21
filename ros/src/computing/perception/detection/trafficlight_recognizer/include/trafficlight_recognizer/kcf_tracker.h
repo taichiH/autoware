@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <memory>
+
 #include <Eigen/Core>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
@@ -13,54 +14,28 @@
 namespace trafficlight_recognizer
 {
 
-  class GaussianDistribution
-  {
-  public:
-    int d = 2;
-    Eigen::Vector2d mean = Eigen::Vector2d(0,0);
-    Eigen::MatrixXd cov = Eigen::MatrixXd::Identity(d, d);
-    Eigen::MatrixXd cov_inverse = cov;
-    double cov_det_sqrt = std::sqrt(cov.determinant());
-  };
-
-
-  class ImageInfo
-  {
-  public:
-    double stamp = 0.0;
-    int signal = 0;
-    cv::Mat image;
-    cv::Rect rect;
-
-    bool initialized = false;
-
-    ImageInfo(const cv::Mat& _image = cv::Mat(3,3,CV_8UC3),
-              const cv::Rect& _rect= cv::Rect(0,0,0,0),
-              const int _signal = 0,
-              const double _stamp = 0.0) {
-      stamp = _stamp;
-      signal = _signal;
-      image = _image;
-      rect = _rect;
-    }
-
-    ~ImageInfo() {};
-
-  };
-
-
   class KcfTracker : public KCF_Tracker
   {
   public:
-    typedef std::shared_ptr<ImageInfo> ImageInfoPtr;
 
-    bool initialized_ = false;
+    bool initialize_ = false;
 
-    KcfTracker(const int signal,
-               const cv::Rect& projected_roi,
+    int signal_ = 0;
+
+    cv::Rect projected_roi_;
+
+    cv::Rect init_box_;
+
+    std::list<cv::Mat > interpolation_images_;
+
+
+    KcfTracker(const cv::Rect& projected_roi,
                const cv::Rect& init_box,
-               const cv::Mat& original_image,
-               const bool initialized);
+               const std::list<cv::Mat>& interpolation_images,
+               const bool init_box_stamp_changed);
+
+    bool update_tracker(std::list<cv::Mat>& interpolation_images,
+                        cv::Rect& output_box);
 
     bool run(cv::Rect& output_box);
 
@@ -70,20 +45,64 @@ namespace trafficlight_recognizer
   }; // class KcfTracker
 
 
+
   class MultiKcfTracker
   {
   public:
+
     typedef std::shared_ptr<KcfTracker> KcfTrackerPtr;
 
     KcfTrackerPtr kcf_tracker_;
 
     std::map<int, KcfTrackerPtr> tracker_map_;
 
-    bool run(const cv::Mat& original_image,
+    double init_box_stamp_ = 0;
+
+    double prev_init_box_stamp_ = 0;
+
+    std::vector<cv::Mat> image_buffer_;
+
+    std::vector<double> image_stamp_buffer_;
+
+    int buffer_size_ = 100;
+
+    int interpolation_frequency_ = 1;
+
+    MultiKcfTracker(int buffer_size = 100,
+                    int interpolation_frequency = 1);
+
+    bool push_to_tracker_map(std::map<int, KcfTrackerPtr>& tracker_map,
+                             const int signal,
+                             const cv::Rect& projected_roi,
+                             const cv::Rect& init_box,
+                             const std::list<cv::Mat>& interpolation_images,
+                             const bool init_box_stamp_changed);
+
+    bool pop_from_tracker_map(std::map<int, KcfTrackerPtr>& tracker_map,
+                              const std::vector<int>& signals);
+
+
+    bool create_buffer(const cv::Mat& image,
+                       const double image_stamp);
+
+    bool get_init_box_stamped_index(const std::vector<double>& image_stamp_buffer,
+                                    int& stamped_index,
+                                    double init_box_stamp);
+
+    bool get_interpolation_images(const bool init_box_stamp_changed,
+                                  const double init_box_stamp,
+                                  const std::vector<cv::Mat>& image_buffer,
+                                  const std::vector<double>& image_stamp_buffer,
+                                  std::list<cv::Mat> interpolation_images);
+
+    bool run(const std::vector<int>& signals,
+             const cv::Mat& original_image,
              const std::vector<cv::Rect>& projected_rois,
-             const std::vector<int>& signals,
              const std::vector<cv::Rect>& init_boxes,
-             std::vector<cv::Rect>& output_boxes);
+             const double image_stamp,
+             const double init_box_stamp,
+             std::vector<cv::Rect>& output_boxes,
+             std::vector<int>& output_signals);
 
   private:
 

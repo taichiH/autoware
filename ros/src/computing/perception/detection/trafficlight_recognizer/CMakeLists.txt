@@ -95,7 +95,7 @@ catkin_package(
   libtrafficlightkcf
   )
 
-set(CMAKE_CXX_FLAGS "-O2 -Wall -Wunused-variable ${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "-O2 -Wall -Wunused-variable ${CMAKE_CXX_FLAGS} -fpic -std=c++11 -pthread")
 
 ### utils ###
 add_library(libutils
@@ -158,14 +158,15 @@ add_dependencies(libtrafficlightkcf
 ### nodelet ###
 add_library(${PROJECT_NAME} SHARED
   nodes/feat_proj/feat_proj_bbox.cpp
-  nodes/tlr_tracker/kcf_tracker_node.cpp)
+  # nodes/tlr_tracker/kcf_tracker_node.cpp
+  )
 
 target_link_libraries(
   ${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
   ${EIGEN_LIBRARIES}
-  libtrafficlightkcf
+  # libtrafficlightkcf
   libutils
   )
 
