@@ -27,161 +27,175 @@
 namespace trafficlight_recognizer
 {
 
-    class ColorClassifier
-    {
-    public:
+  class ColorClassifier
+  {
+  public:
 
-        enum HSV {
-            Hue = 0,
-            Sat = 1,
-            Val = 2,
-        };
-
-        enum Lamp {
-            GREEN = 0,
-            YELLOW = 1,
-            RED = 2,
-        };
-
-        // variables
-
-        int buffer_size_ = 5;
-
-        std::vector< std::vector<float> > ratios_buffer_;
-
-        float ratios_thresh_ = 0.35;
-
-        Utils utils_;
-
-        // funtions
-
-        ColorClassifier() {}
-
-        ~ColorClassifier() {};
-
-        bool get_params(const ros::NodeHandle& pnh);
-
-        bool hsv_filter(const cv::Mat &input_image,
-                        std::vector<cv::Mat> &output_images);
-
-        bool get_color_ratios(const std::vector<cv::Mat> &input_images,
-                              std::vector<float> &ratios);
-
-        float moving_average_filter(std::vector<float> ratios);
-
-        bool get_lamp_states(autoware_msgs::LampStateArray& states,
-                             std::vector<float> ratios);
-
-
-    private:
-
-        std::vector<cv::Scalar> lower_ranges_;
-
-        std::vector<cv::Scalar> upper_ranges_;
-
+    enum HSV {
+      Hue = 0,
+      Sat = 1,
+      Val = 2,
     };
 
-    class ArrowClassifier
-    {
-    public:
-
-        enum Lamp {
-            LEFT = 0,
-            RIGHT = 1,
-            UP = 2,
-            DOWN = 3,
-        };
-
-        // variables
-
-        cv::Mat template_image_;
-
-        float pair_thresh_ = 3;
-
-        float area_thresh_ = 400;
-
-        int dilation_size_ = 3;
-
-        Utils utils_;
-
-        // functions
-
-        ArrowClassifier() {}
-
-        ~ArrowClassifier() {};
-
-        bool get_shape(cv::Mat& image, std::vector<std::vector<cv::Point> >& contours);
-
-        bool calc_arrow_direction(const cv::Mat& image, const cv::Rect rect, autoware_msgs::LampState& state);
-
-        bool load_template(const std::string path);
-
-        bool get_params(const ros::NodeHandle& pnh);
-
-        bool get_arrow_rects
-            (const std::vector< std::vector<cv::Point> >& image_contours,
-             const std::vector< std::vector<cv::Point> >& template_contours,
-             const cv::Mat& image,
-             std::vector<cv::Rect>& rects,
-             cv::Mat& debug_image);
-
-        bool get_index_pairs
-            (const std::vector< std::vector<cv::Point> >& image_contours,
-             const std::vector< std::vector<cv::Point> >& template_contours,
-             std::vector<std::pair<int, double>>& index_pairs);
-
+    enum Lamp {
+      GREEN = 0,
+      YELLOW = 1,
+      RED = 2,
     };
 
+    typedef std::shared_ptr<Utils> UtilsPtr;
 
-    class TrafficLightClassifierNode
-    {
-    public:
+    // variables
 
-        // variables
+    int buffer_size_ = 5;
 
-        ros::NodeHandle nh_;
+    std::vector< std::vector<float> > ratios_buffer_;
 
-        typedef message_filters::sync_policies::ExactTime<
-            sensor_msgs::Image,
-            autoware_msgs::StampedRoi
-            > SyncPolicy;
-        typedef message_filters::sync_policies::ApproximateTime<
-            sensor_msgs::Image,
-            autoware_msgs::StampedRoi
-            > ApproximateSyncPolicy;
+    float ratios_thresh_ = 0.35;
 
-        boost::shared_ptr<message_filters::Synchronizer<SyncPolicy> > sync_;
-        boost::shared_ptr<message_filters::Synchronizer<ApproximateSyncPolicy> > approximate_sync_;
-        message_filters::Subscriber<sensor_msgs::Image> image_sub_;
-        message_filters::Subscriber<autoware_msgs::StampedRoi> stamped_roi_sub_;
+    UtilsPtr utils_;
 
-        bool is_approximate_sync_ = false;
+    // funtions
 
-        ColorClassifier color_classifier_;
+    ColorClassifier();
 
-        ArrowClassifier arrow_classifier_;
+    ~ColorClassifier() {};
 
-        Utils utils_;
+    bool get_params(const ros::NodeHandle& pnh);
 
-        ros::Publisher image_pub_;
+    bool hsv_filter(const cv::Mat &input_image,
+                    std::vector<cv::Mat> &output_images);
 
-        ros::Publisher trafficlight_state_array_pub_;
+    bool get_color_ratios(const std::vector<cv::Mat> &input_images,
+                          std::vector<float> &ratios);
 
-        // functions
+    float moving_average_filter(std::vector<float> ratios);
 
-        void callback
-            (const sensor_msgs::Image::ConstPtr& image_msg,
-             const autoware_msgs::StampedRoi::ConstPtr& stamped_roi_msg);
-
-        bool classify
-            (const cv::Mat& image,
-             autoware_msgs::LampStateArray& lamp_state_array,
-             cv::Mat& debug_image);
-
-        void run();
+    bool get_lamp_states(autoware_msgs::LampStateArray& states,
+                         std::vector<float> ratios);
 
 
-    }; // TrafficLightClassifier
+  private:
+
+    std::vector<cv::Scalar> lower_ranges_;
+
+    std::vector<cv::Scalar> upper_ranges_;
+
+  };
+
+  class ArrowClassifier
+  {
+  public:
+
+    enum Lamp {
+      LEFT = 0,
+      RIGHT = 1,
+      UP = 2,
+      DOWN = 3,
+    };
+
+    // variables
+
+    typedef std::shared_ptr<Utils> UtilsPtr;
+
+    cv::Mat template_image_;
+
+    float pair_thresh_ = 3;
+
+    float area_thresh_ = 400;
+
+    int dilation_size_ = 3;
+
+    UtilsPtr utils_;
+
+    // functions
+
+    ArrowClassifier();
+
+    ~ArrowClassifier() {};
+
+    bool get_shape(cv::Mat& image, std::vector<std::vector<cv::Point> >& contours);
+
+    bool calc_arrow_direction(const cv::Mat& image, const cv::Rect rect, autoware_msgs::LampState& state);
+
+    bool load_template(const std::string path);
+
+    bool get_params(const ros::NodeHandle& pnh);
+
+    bool get_arrow_rects
+      (const std::vector< std::vector<cv::Point> >& image_contours,
+       const std::vector< std::vector<cv::Point> >& template_contours,
+       const cv::Mat& image,
+       std::vector<cv::Rect>& rects,
+       cv::Mat& debug_image);
+
+    bool get_index_pairs
+      (const std::vector< std::vector<cv::Point> >& image_contours,
+       const std::vector< std::vector<cv::Point> >& template_contours,
+       std::vector<std::pair<int, double>>& index_pairs);
+
+  };
+
+
+  class TrafficLightClassifierNode
+  {
+  public:
+
+    // variables
+
+    ros::NodeHandle nh_;
+
+    typedef message_filters::sync_policies::ExactTime<
+      sensor_msgs::Image,
+      autoware_msgs::StampedRoi
+      > SyncPolicy;
+
+    typedef message_filters::sync_policies::ApproximateTime<
+      sensor_msgs::Image,
+      autoware_msgs::StampedRoi
+      > ApproximateSyncPolicy;
+
+    typedef std::shared_ptr<ColorClassifier> ColorClassifierPtr;
+
+    typedef std::shared_ptr<ArrowClassifier> ArrowClassifierPtr;
+
+    typedef std::shared_ptr<Utils> UtilsPtr;
+
+    boost::shared_ptr<message_filters::Synchronizer<SyncPolicy> > sync_;
+
+    boost::shared_ptr<message_filters::Synchronizer<ApproximateSyncPolicy> > approximate_sync_;
+
+    message_filters::Subscriber<sensor_msgs::Image> image_sub_;
+
+    message_filters::Subscriber<autoware_msgs::StampedRoi> stamped_roi_sub_;
+
+    bool is_approximate_sync_ = false;
+
+    ColorClassifierPtr color_classifier_;
+
+    ArrowClassifierPtr arrow_classifier_;
+
+    UtilsPtr utils_;
+
+    ros::Publisher image_pub_;
+
+    ros::Publisher trafficlight_state_array_pub_;
+
+    // functions
+
+    void callback
+      (const sensor_msgs::Image::ConstPtr& image_msg,
+       const autoware_msgs::StampedRoi::ConstPtr& stamped_roi_msg);
+
+    bool classify
+      (const cv::Mat& image,
+       autoware_msgs::LampStateArray& lamp_state_array,
+       cv::Mat& debug_image);
+
+    void run();
+
+
+  }; // TrafficLightClassifier
 
 } // tlr_classifier
 
