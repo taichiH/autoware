@@ -2,7 +2,7 @@
 
 namespace trafficlight_recognizer
 {
-  void KcfTrackerROS::onInit()
+  void KcfTrackerNode::onInit()
   {
     nh_ = getNodeHandle();
     pnh_ = getPrivateNodeHandle();
@@ -20,7 +20,7 @@ namespace trafficlight_recognizer
 
     output_rois_pub_ = pnh_.advertise<autoware_msgs::StampedRoi>("output_rois", 1);
 
-    boxes_sub = pnh_.subscribe("input_yolo_detected_boxes", 1, &KcfTrackerROS::boxes_callback, this);
+    boxes_sub = pnh_.subscribe("input_yolo_detected_boxes", 1, &KcfTrackerNode::boxes_callback, this);
     image_sub_.subscribe(pnh_, "input_raw_image", 1);
     stamped_roi_sub_.subscribe(pnh_, "input_nearest_roi_rect", 1);
 
@@ -28,18 +28,18 @@ namespace trafficlight_recognizer
       approximate_sync_ =
         boost::make_shared<message_filters::Synchronizer<ApproximateSyncPolicy> >(1000);
       approximate_sync_->connectInput(image_sub_, stamped_roi_sub_);
-      approximate_sync_->registerCallback(boost::bind(&KcfTrackerROS::callback, this, _1, _2));
+      approximate_sync_->registerCallback(boost::bind(&KcfTrackerNode::callback, this, _1, _2));
     } else {
       sync_  =
         boost::make_shared<message_filters::Synchronizer<SyncPolicy> >(1000);
       sync_->connectInput(image_sub_, stamped_roi_sub_);
-      sync_->registerCallback(boost::bind(&KcfTrackerROS::callback, this, _1, _2));
+      sync_->registerCallback(boost::bind(&KcfTrackerNode::callback, this, _1, _2));
     }
 
   }
 
 
-  void KcfTrackerROS::boxes_callback(const autoware_msgs::StampedRoi::ConstPtr& boxes)
+  void KcfTrackerNode::boxes_callback(const autoware_msgs::StampedRoi::ConstPtr& boxes)
   {
     boost::mutex::scoped_lock lock(mutex_);
     utils_->roismsg2cvrects(boxes->roi_array, detected_boxes_);
@@ -47,7 +47,7 @@ namespace trafficlight_recognizer
   }
 
 
-  void KcfTrackerROS::callback(const sensor_msgs::Image::ConstPtr& image_msg,
+  void KcfTrackerNode::callback(const sensor_msgs::Image::ConstPtr& image_msg,
                                const autoware_msgs::StampedRoi::ConstPtr& projected_roi_msg)
   {
     boost::mutex::scoped_lock lock(mutex_);
@@ -84,4 +84,4 @@ namespace trafficlight_recognizer
 } // namespace trafficlight_recognizer
 
 #include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(trafficlight_recognizer::KcfTrackerROS, nodelet::Nodelet)
+PLUGINLIB_EXPORT_CLASS(trafficlight_recognizer::KcfTrackerNode, nodelet::Nodelet)

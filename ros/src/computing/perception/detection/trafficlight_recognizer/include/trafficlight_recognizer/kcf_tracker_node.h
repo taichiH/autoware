@@ -18,7 +18,7 @@
 namespace trafficlight_recognizer
 {
 
-  class KcfTrackerROS : public nodelet::Nodelet
+  class KcfTrackerNode : public nodelet::Nodelet
   {
   public:
 

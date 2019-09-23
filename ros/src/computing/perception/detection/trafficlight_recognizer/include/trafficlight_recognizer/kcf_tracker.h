@@ -18,6 +18,20 @@ namespace trafficlight_recognizer
   {
   public:
 
+    KcfTracker(const cv::Rect& projected_roi,
+               const cv::Rect& init_box,
+               const std::list<cv::Mat>& interpolation_images,
+               const bool init_box_stamp_changed);
+
+    bool run(cv::Rect& output_box);
+
+    bool update_parameters(const cv::Rect& projected_roi,
+                           const cv::Rect& init_box,
+                           const std::list<cv::Mat>& interpolation_images,
+                           const bool init_box_stamp_changed);
+
+  private:
+
     bool initialize_ = false;
 
     int signal_ = 0;
@@ -28,19 +42,11 @@ namespace trafficlight_recognizer
 
     std::list<cv::Mat > interpolation_images_;
 
-
-    KcfTracker(const cv::Rect& projected_roi,
-               const cv::Rect& init_box,
-               const std::list<cv::Mat>& interpolation_images,
-               const bool init_box_stamp_changed);
-
     bool update_tracker(std::list<cv::Mat>& interpolation_images,
                         cv::Rect& output_box);
 
-    bool run(cv::Rect& output_box);
-
-
-  private:
+    bool is_box_in_image(const cv::Mat& image,
+                         const cv::Rect& box);
 
   }; // class KcfTracker
 
@@ -93,7 +99,7 @@ namespace trafficlight_recognizer
                                   const double init_box_stamp,
                                   const std::vector<cv::Mat>& image_buffer,
                                   const std::vector<double>& image_stamp_buffer,
-                                  std::list<cv::Mat> interpolation_images);
+                                  std::list<cv::Mat>& interpolation_images);
 
     bool run(const std::vector<int>& signals,
              const cv::Mat& original_image,
