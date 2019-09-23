@@ -279,6 +279,9 @@ TEST_F(KcfTrackerNodeTestSuite, runMultiKcfTracking)
   std::vector<double> sequential_init_box_stamp
   {0, 0, 100, 100, 100};
 
+  std::vector<int> expect_output_box_sizes
+  {0, 0, 3, 3, 3};
+
   for (int i=0; i<sequential_signals.size(); ++i)
     {
       std::vector<int> signals = sequential_signals.at(i);
@@ -302,6 +305,10 @@ TEST_F(KcfTrackerNodeTestSuite, runMultiKcfTracking)
          output_signals);
 
       ASSERT_EQ(true, succeeded) << "failed to run multi_kcf_tracker";
+
+      double expect_size = expect_output_box_sizes.at(i);
+      ASSERT_EQ(output_boxes.size(), expect_size) << "expect size is {0, 0, 3, 3, 3}" ;
+      ASSERT_EQ(output_signals.size(), expect_size) << "expect size is {0, 0, 3, 3, 3}" ;
     }
 }
 
