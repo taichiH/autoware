@@ -100,6 +100,7 @@ namespace trafficlight_recognizer
     autoware_msgs::StampedRoi projected_rois;
     extract(image.size(), signal_msg->Signals, projected_rois);
 
+    projected_rois.header = image_msg->header;
     projected_rois_pub_.publish(projected_rois);
   }
 

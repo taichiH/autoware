@@ -55,6 +55,20 @@ class TLRSSDDetector():
         sync.registerCallback(self.callback)
 
 
+    def fit_in_frame(self, lt, rb, size):
+        # 0:x, 1:y
+
+        if rb[0] > size[0]:
+            rb[0] = size[0]
+        if rb[1] > size[1]:
+            rb[1] = size[1]
+        if lt[0] < 0:
+            lt[0] = 0
+        if lt[1] < 0:
+            lt[1] = 0
+
+        return lt, rb
+
     def callback(self, image_msg, stamped_roi_msg):
         try:
             # transform image to RGB, float, CHW
@@ -82,12 +96,18 @@ class TLRSSDDetector():
             # get highest score bbox
             bbox = bboxes[np.argmax(scores)]
 
+            lt = (bbox[1], bbox[0])
+            rb = (bbox[3] - bbox[1], bbox[2] - bbox[0])
+            size = (croped_img.shape[-1], croped_img.shape[-2])
+            lt, rb = self.fit_in_frame(lt, rb, size)
+
             stamped_roi.roi_array.append(
-                RegionOfInterest(
-                    x_offset = bbox[1],
-                    y_offset = bbox[0],
-                    width = bbox[3] - bbox[1],
-                    height = bbox[2] - bbox[0]))
+                RegionOfInterest(x_offset=lt[0],
+                                 y_offset=lt[1],
+                                 width=rb[0] - lt[0],
+                                 height=rb[1] - lt[1]
+                )
+            )
             stamped_roi.signals.append(signal)
 
         stamped_roi.header = stamped_roi_msg.header
