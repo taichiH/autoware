@@ -12,7 +12,8 @@
       gpu: 0
       approximate_sync: true
     </rosparam>
-
+    <param name="model_path"
+           value="/home/taichi/chainer/ssd_training/train_scripts/ssd300.npz" />
   </node>
 
 </launch>
