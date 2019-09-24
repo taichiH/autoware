@@ -6,8 +6,13 @@
   <node name="tlr_ssd_detector"
         pkg="trafficlight_recognizer" type="chainer_ssd_tlr_detector.py"
         output="screen">
-    <remap from="input_image" to="$(arg input_image)" />
-    <remap from="input_stamped_roi" to="$(arg input_stamped_roi)" />
+    <remap from="~input_image" to="$(arg input_image)" />
+    <remap from="~input_stamped_roi" to="$(arg input_stamped_roi)" />
+    <rosparam subst_value="true">
+      gpu: 0
+      approximate_sync: true
+    </rosparam>
+
   </node>
 
 </launch>
