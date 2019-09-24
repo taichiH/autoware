@@ -1,0 +1,13 @@
+<launch>
+
+  <arg name="input_image" default="/image_raw" />
+  <arg name="input_stamped_roi" default="/feat_proj_bbox/output" />
+
+  <node name="tlr_ssd_detector"
+        pkg="trafficlight_recognizer" type="chainer_ssd_tlr_detector.py"
+        output="screen">
+    <remap from="input_image" to="$(arg input_image)" />
+    <remap from="input_stamped_roi" to="$(arg input_stamped_roi)" />
+  </node>
+
+</launch>

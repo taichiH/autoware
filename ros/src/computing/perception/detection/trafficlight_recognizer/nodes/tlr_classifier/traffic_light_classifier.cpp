@@ -453,10 +453,6 @@ namespace trafficlight_recognizer
     arrow_classifier_ = std::make_shared<ArrowClassifier>();
     utils_ = std::make_shared<Utils>();
 
-    std::string image_topic_str;
-    if ( !pnh.getParam("image_topic", image_topic_str) )
-      image_topic_str = "/image_raw";
-
     if( !color_classifier_->get_params(pnh) )
       {
         ROS_ERROR("failed get color calssfier params");

@@ -7,6 +7,7 @@ import rospy
 
 from sensor_msgs.msg import Image
 from autoware_msgs.msg import StampedRoi
+import message_filters
 
 import chainer
 from chainercv.links import SSD300
@@ -34,9 +35,8 @@ class SSDObjectDetector():
         else:
             rospy.logerr('Unsupported ~model: {}'.format(model_name))
 
-        self.model = model_class(
-            n_fg_class=len(self.label_names),
-            pretrained_model=model_path)
+        self.model = model_class(n_fg_class=len(self.label_names),
+                                 pretrained_model=model_path)
 
         if self.gpu >= 0:
             chainer.cuda.get_device_from_id(self.gpu).use()
@@ -44,9 +44,23 @@ class SSDObjectDetector():
 
         rospy.loginfo("Loaded model: %s" % model_path)
 
-        self.stamped_roi_pub = self.advertise("~output", StampedRoi, queue_size=1)
-        self.sub_image = rospy.Subscriber(
-            "~input", Image, self.callback, queue_size=1, buff_size=2**26)
+        self.stamped_roi_pub = rospy.Publisher(
+            '~output_stamped_roi', StampedRoi, queue_size=1)
+
+        sub_image = message_filters.Subscriber(
+            '~input_image', Image, queue_size=1, buff_size=2**24)
+        sub_stamped_roi = message_filters.Subscriber(
+            '~input_stamp_roi', StampedRoi, queue_size=1, buff_size=2**24)
+        self.subs = [sub_image, sub_stamped_roi]
+        if rospy.get_param('~approximate_sync', True):
+            slop = rospy.get_param('~slop', 0.1)
+            sync = message_filters.ApproximateTimeSynchronizer(
+                fs=self.subs, queue_size=queue_size, slop=slop)
+        else:
+            sync = message_filters.TimeSynchronizer(
+                fs=self.subs, queue_size=queue_size)
+        sync.registerCallback(self.callback)
+
 
     def callback(self, image_msg, stamped_roi_msg):
         try:

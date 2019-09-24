@@ -15,7 +15,7 @@ namespace trafficlight_recognizer
     pnh_.getParam("h_min", h_min);
     pnh_.getParam("approximate_sync", is_approximate_sync_);
 
-    projected_rois_pub_ = pnh_.advertise<autoware_msgs::StampedRoi>("output", 1);
+    projected_rois_pub_ = pnh_.advertise<autoware_msgs::StampedRoi>("output_projected_roi", 1);
 
     sub_image_.subscribe(pnh_, "input_image", 1);
     sub_signal_.subscribe(pnh_, "input_signal", 1);

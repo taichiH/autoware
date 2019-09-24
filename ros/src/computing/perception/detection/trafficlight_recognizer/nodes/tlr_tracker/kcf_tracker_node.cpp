@@ -7,7 +7,6 @@ namespace trafficlight_recognizer
     nh_ = getNodeHandle();
     pnh_ = getPrivateNodeHandle();
 
-    pnh_.getParam("debug_log", debug_log_);
     pnh_.getParam("kernel_sigma", kernel_sigma_);
     pnh_.getParam("cell_size", cell_size_);
     pnh_.getParam("num_scales", num_scales_);
@@ -20,9 +19,13 @@ namespace trafficlight_recognizer
 
     output_rois_pub_ = pnh_.advertise<autoware_msgs::StampedRoi>("output_rois", 1);
 
-    boxes_sub = pnh_.subscribe("input_yolo_detected_boxes", 1, &KcfTrackerNode::boxes_callback, this);
-    image_sub_.subscribe(pnh_, "input_raw_image", 1);
-    stamped_roi_sub_.subscribe(pnh_, "input_nearest_roi_rect", 1);
+    // boxes callback
+    boxes_sub = pnh_.subscribe
+      ("input_detected_boxes", 1, &KcfTrackerNode::boxes_callback, this);
+
+    // image and stamped_roi callback
+    image_sub_.subscribe(pnh_, "input_image", 1);
+    stamped_roi_sub_.subscribe(pnh_, "input_stamped_roi", 1);
 
     if (is_approximate_sync_){
       approximate_sync_ =

@@ -7,8 +7,8 @@
     </description>
   </class>
 
-  <class name="trafficlight_recognizer/KcfTrackerROS"
-         type="trafficlight_recognizer::KcfTrackerROS"
+  <class name="trafficlight_recognizer/KcfTrackerNode"
+         type="trafficlight_recognizer::KcfTrackerNode"
          base_class_type="nodelet::Nodelet">
     <description>
     </description>
