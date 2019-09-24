@@ -111,6 +111,7 @@ add_dependencies(libutils
   ${catkin_EXPORTED_TARGETS}
   )
 
+
 ### tlr_classifier ###
 add_executable(tlr_classifier
   nodes/tlr_classifier/traffic_light_classifier_node.cpp
@@ -139,8 +140,8 @@ add_dependencies(feat_proj
 
 
 ### tlr_tracker ###
-add_subdirectory(nodes/tlr_tracker/libs/src)
-
+add_subdirectory(nodes/tlr_tracker/libs/src
+  )
 add_library(libtrafficlightkcf
   nodes/tlr_tracker/kcf_tracker.cpp
   )
@@ -174,17 +175,38 @@ target_link_libraries(
 if(CATKIN_ENABLE_TESTING)
   find_package(rostest REQUIRED)
 
-  add_rostest_gtest(test-feat_proj_bbox test/test_feat_proj_bbox.test
-    test/test_feat_proj_bbox.cpp nodes/feat_proj/feat_proj_bbox.cpp
+  add_rostest_gtest(test-feat_proj_bbox
+    test/test_feat_proj_bbox.test
+    test/test_feat_proj_bbox.cpp
+    nodes/feat_proj/feat_proj_bbox.cpp
     )
-  target_link_libraries(test-feat_proj_bbox libutils ${catkin_LIBRARIES} ${OpenCV_LIBS}
+  target_link_libraries(test-feat_proj_bbox
+    libutils
+    ${catkin_LIBRARIES}
+    ${OpenCV_LIBS}
     )
 
-  add_rostest_gtest(test-kcf_tracker_node test/test_kcf_tracker_node.test
-    test/test_kcf_tracker_node.cpp nodes/tlr_tracker/kcf_tracker_node.cpp
+  add_rostest_gtest(test-kcf_tracker_node
+    test/test_kcf_tracker_node.test
+    test/test_kcf_tracker_node.cpp
+    nodes/tlr_tracker/kcf_tracker_node.cpp
     )
   target_link_libraries(test-kcf_tracker_node
-    libutils libtrafficlightkcf ${catkin_LIBRARIES} ${OpenCV_LIBS}
+    libutils
+    libtrafficlightkcf
+    ${catkin_LIBRARIES}
+    ${OpenCV_LIBS}
+    )
+
+  add_rostest_gtest(test-traffic_light_classifier
+    test/test_traffic_light_classifier.test
+    test/test_traffic_light_classifier.cpp
+    nodes/tlr_classifier/traffic_light_classifier.cpp
+    )
+  target_link_libraries(test-traffic_light_classifier
+    libutils
+    ${catkin_LIBRARIES}
+    ${OpenCV_LIBS}
     )
 
 endif()

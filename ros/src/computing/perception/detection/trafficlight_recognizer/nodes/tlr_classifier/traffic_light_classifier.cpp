@@ -17,7 +17,16 @@ namespace trafficlight_recognizer
     for (int i=0; i<lower_ranges_.size(); ++i)
       {
         cv::Mat dst_image;
-        cv::inRange(hsv_image, lower_ranges_.at(i), upper_ranges_.at(i), dst_image);
+        try
+          {
+            cv::inRange(hsv_image, lower_ranges_.at(i), upper_ranges_.at(i), dst_image);
+          }
+        catch (cv::Exception& e)
+          {
+            ROS_ERROR("failed to filter image by hsv value : %s", e.what());
+            return false;
+          }
+
         output_images.push_back(dst_image);
       }
 
@@ -37,7 +46,11 @@ namespace trafficlight_recognizer
         ratios.push_back(ratio);
       }
 
-    moving_average_filter(ratios);
+    if ( !moving_average_filter(ratios) )
+      {
+        return false;
+      }
+
     return true;
   }
 
@@ -163,14 +176,24 @@ namespace trafficlight_recognizer
 
   bool ArrowClassifier::get_shape(cv::Mat& image, std::vector<std::vector<cv::Point> >& contours)
   {
-    cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT,
-                                                cv::Size(2*dilation_size_+1, 2*dilation_size_+1),
-                                                cv::Point(dilation_size_, dilation_size_));
-    cv::dilate(image, image, element);
+    try
+      {
+        cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT,
+                                                    cv::Size(2*dilation_size_+1, 2*dilation_size_+1),
+                                                    cv::Point(dilation_size_, dilation_size_));
+        cv::dilate(image, image, element);
 
-    std::vector<cv::Vec4i> hierarchy;
-    cv::findContours(image, contours, hierarchy,
-                     CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
+        std::vector<cv::Vec4i> hierarchy;
+        cv::findContours(image, contours, hierarchy,
+                         CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
+      }
+    catch (cv::Exception& e)
+      {
+        ROS_ERROR("failed to get shape : %s", e.what());
+        return false;
+      }
+
+    return true;
   }
 
   bool ArrowClassifier::calc_arrow_direction(const cv::Mat& image,
@@ -329,9 +352,16 @@ namespace trafficlight_recognizer
     ///// color classification /////
 
     std::vector<cv::Mat> filtered_images;
-    color_classifier_->hsv_filter(image, filtered_images);
+    if ( !color_classifier_->hsv_filter(image, filtered_images) )
+      {
+        return false;
+      }
+
     std::vector<float> ratios;
-    color_classifier_->get_color_ratios(filtered_images, ratios);
+    if( !color_classifier_->get_color_ratios(filtered_images, ratios) )
+      {
+        return false;
+      }
     autoware_msgs::LampStateArray color_lamp_states;
     color_classifier_->get_lamp_states(color_lamp_states, ratios);
 
@@ -341,9 +371,17 @@ namespace trafficlight_recognizer
     cv::Mat gray_image;
     cv::cvtColor(image, gray_image, CV_BGR2GRAY);
     std::vector< std::vector<cv::Point> > image_contours;
-    arrow_classifier_->get_shape(gray_image, image_contours);
+    if ( !arrow_classifier_->get_shape(gray_image, image_contours) )
+      {
+        return false;
+      }
+
     std::vector< std::vector<cv::Point> > template_contours;
-    arrow_classifier_->get_shape(arrow_classifier_->template_image_, template_contours);
+    if ( !arrow_classifier_->get_shape(arrow_classifier_->template_image_, template_contours) )
+      {
+        return false;
+      }
+
     std::vector<cv::Rect> rects;
     arrow_classifier_->get_arrow_rects
       (image_contours, template_contours, image, rects, debug_image);
@@ -356,11 +394,7 @@ namespace trafficlight_recognizer
         arrow_lamp_states.states.push_back(state);
       }
 
-
-    // publish topics
-
     utils_->merge_msg(color_lamp_states, arrow_lamp_states, lamp_state_array);
-
 
     return true;
   }
@@ -372,15 +406,7 @@ namespace trafficlight_recognizer
     autoware_msgs::TrafficLightState traffilight_state_msg;
 
     cv::Mat image;
-
-    try {
-      cv_bridge::CvImagePtr cv_image =
-        cv_bridge::toCvCopy(image_msg, "bgr8");
-      image = cv_image->image;
-    } catch (cv_bridge::Exception& e) {
-      ROS_ERROR("failed convert image from sensor_msgs::Image to cv::Mat");
-      return;
-    }
+    utils_->rosmsg2cvmat(image_msg, image);
 
     autoware_msgs::TrafficLightStateArray trafficlight_state_array;
     cv::Mat concatenated_debug_image;
@@ -398,7 +424,11 @@ namespace trafficlight_recognizer
         cv::Mat croped_image = image(roi);
         cv::Mat debug_image;
         autoware_msgs::LampStateArray lamp_state_array;
-        classify(croped_image, lamp_state_array, debug_image);
+        if ( !classify(croped_image, lamp_state_array, debug_image) )
+          {
+            ROS_ERROR("failed classify image abort callback");
+            return;
+          }
 
         lamp_state_array.header = stamped_roi_msg->header;
         trafficlight_state.states = lamp_state_array;

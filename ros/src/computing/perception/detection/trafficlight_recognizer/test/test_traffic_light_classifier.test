@@ -1,0 +1,8 @@
+<launch>
+
+  <test test-name="test-traffic_light_classifier"
+        name="test"
+        pkg="trafficlight_recognizer" type="test-traffic_light_classifier">
+  </test>
+
+</launch>
