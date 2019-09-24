@@ -27,14 +27,14 @@
     </rosparam>
   </node>
 
-  <!-- <test test-name="test-tlr_ssd_detector" -->
-  <!--       name="test-tlr_ssd_detector" -->
-  <!--       pkg="jsk_tools" type="test_topic_published.py" -->
-  <!--       time-limit="30" retry="1"> -->
-  <!--   <rosparam> -->
-  <!--     topic_0: /tlr_ssd_detector/output_stamped_roi -->
-  <!--     timeout_0: 30 -->
-  <!--   </rosparam> -->
-  <!-- </test> -->
+  <test test-name="test-tlr_ssd_detector"
+        name="test-tlr_ssd_detector"
+        pkg="jsk_tools" type="test_topic_published.py"
+        time-limit="30" retry="1">
+    <rosparam>
+      topic_0: /tlr_ssd_detector/output_stamped_roi
+      timeout_0: 30
+    </rosparam>
+  </test>
 
 </launch>
