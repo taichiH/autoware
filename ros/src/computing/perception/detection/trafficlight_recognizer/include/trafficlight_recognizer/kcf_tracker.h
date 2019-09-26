@@ -36,6 +36,8 @@ namespace trafficlight_recognizer
 
     cv::Rect init_box_;
 
+    cv::Point offset_ = cv::Point(10, 10);
+
     std::list<cv::Mat > interpolation_images_;
 
     bool update_tracker(std::list<cv::Mat>& interpolation_images,

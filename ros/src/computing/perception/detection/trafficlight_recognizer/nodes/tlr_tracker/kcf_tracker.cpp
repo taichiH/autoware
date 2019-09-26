@@ -9,7 +9,10 @@ namespace trafficlight_recognizer
                          const std::list<cv::Mat>& interpolation_images,
                          const bool init_box_stamp_changed)
   {
-    init_box_ = init_box;
+    init_box_ = cv::Rect(init_box.x - offset_.x,
+                         init_box.y - offset_.y,
+                         init_box.width + offset_.x * 2,
+                         init_box.height + offset_.y * 2);
     initialize_ = init_box_stamp_changed;
     std::copy(interpolation_images.begin(),
               interpolation_images.end(),
@@ -20,7 +23,10 @@ namespace trafficlight_recognizer
                                      const std::list<cv::Mat>& interpolation_images,
                                      const bool init_box_stamp_changed)
   {
-    init_box_ = init_box;
+    init_box_ = cv::Rect(init_box.x - offset_.x,
+                         init_box.y - offset_.y,
+                         init_box.width + offset_.x * 2,
+                         init_box.height + offset_.y * 2);
     initialize_ = init_box_stamp_changed;
     std::copy(interpolation_images.begin(),
               interpolation_images.end(),
@@ -33,6 +39,8 @@ namespace trafficlight_recognizer
   bool KcfTracker::update_tracker(std::list<cv::Mat>& interpolation_images,
                                   cv::Rect& output_box)
   {
+
+    std::cerr << "interpolation_images.size(): " << interpolation_images.size() << std::endl;
 
     try
       {
@@ -76,6 +84,8 @@ namespace trafficlight_recognizer
   bool KcfTracker::run(cv::Rect& output_box)
   {
 
+    std::cerr << "kcf tracker run !!!" << std::endl;
+
     if ( interpolation_images_.empty() )
       {
         std::cerr << "interpolation_images is empty" << std::endl;
@@ -104,6 +114,8 @@ namespace trafficlight_recognizer
             return false;
           }
 
+        std::cerr << "interpolation update " << std::endl;
+
         // update if interpolation_images_ size > 0
         if ( !update_tracker(interpolation_images_, output_box) )
           {
@@ -113,6 +125,8 @@ namespace trafficlight_recognizer
       }
     else
       {
+        std::cerr << "default update " << std::endl;
+
         // update
         if ( !update_tracker(interpolation_images_, output_box) )
           {

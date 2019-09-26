@@ -325,6 +325,10 @@ void echoSignals2(ros::Publisher &pub, ros::Publisher &pub_proj, bool useOpenGLC
 		{
                     countPoint++;
 
+                    if (signal.type != 3)
+                      {
+                        continue;
+                      }
 
                     int radius;
                     int ux, vx;
@@ -343,7 +347,8 @@ void echoSignals2(ros::Publisher &pub, ros::Publisher &pub_proj, bool useOpenGLC
                     sign.y = signalcenter.y();
                     sign.z = signalcenter.z();
                     sign.hang = vmap.vectors[signal.vid].hang; // hang is expressed in [0, 360] degree
-                    sign.type = signal.type, sign.linkId = signal.linkid;
+                    sign.type = signal.type;
+                    sign.linkId = signal.linkid;
                     sign.plId = signal.plid;
 
                     // Get holizontal angle of signal in camera corrdinate system
