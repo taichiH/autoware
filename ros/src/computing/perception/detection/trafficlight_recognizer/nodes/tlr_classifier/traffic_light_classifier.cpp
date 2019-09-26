@@ -9,13 +9,16 @@ namespace trafficlight_recognizer
   }
 
   bool ColorClassifier::hsv_filter(const cv::Mat &input_image,
-                                   std::vector<cv::Mat> &output_images)
+                                   std::vector<cv::Mat> &output_images,
+                                   std::vector<cv::Mat>& debug_images)
   {
-    cv::Mat hsv_image;
-    cv::cvtColor(input_image, hsv_image, cv::COLOR_BGR2HSV);
+    std::cerr << __func__ << std::endl;
 
     for (int i=0; i<lower_ranges_.size(); ++i)
       {
+        cv::Mat hsv_image;
+        cv::cvtColor(input_image, hsv_image, cv::COLOR_BGR2HSV);
+
         cv::Mat dst_image;
         try
           {
@@ -28,6 +31,10 @@ namespace trafficlight_recognizer
           }
 
         output_images.push_back(dst_image);
+
+        cv::cvtColor(dst_image, dst_image, CV_GRAY2BGR);
+        debug_images.push_back(dst_image);
+
       }
 
     return true;
@@ -37,19 +44,22 @@ namespace trafficlight_recognizer
   bool ColorClassifier::get_color_ratios(const std::vector<cv::Mat> &input_images,
                                          std::vector<float> &ratios)
   {
+    std::cerr << "----- " << __func__ << std::endl;
+
     for (int i=0; i<input_images.size(); ++i)
       {
         cv::Mat image = input_images.at(i).clone();
         int image_size = image.cols * image.rows;
         int area = utils_->get_area(image);
         float ratio = static_cast<float>(area) / static_cast<float>(image_size);
+        std::cerr << "ratio: " << ratio << std::endl;
         ratios.push_back(ratio);
       }
 
-    if ( !moving_average_filter(ratios) )
-      {
-        return false;
-      }
+    // if ( !moving_average_filter(ratios) )
+    //   {
+    //     return false;
+    //   }
 
     return true;
   }
@@ -57,6 +67,8 @@ namespace trafficlight_recognizer
 
   float ColorClassifier::moving_average_filter(std::vector<float> ratios)
   {
+    std::cerr << "----- " << __func__ << std::endl;
+
     if (ratios_buffer_.size() > buffer_size_)
       {
         ratios_buffer_.erase(ratios_buffer_.begin());
@@ -66,8 +78,10 @@ namespace trafficlight_recognizer
     int ratios_size = ratios.size();
     ratios.clear();
 
+    std::cerr << "ratios_size: " << ratios_size << std::endl;
     for (int i=0; i<ratios_size; ++i)
       {
+        std::cerr << "ratios_buffer_.size(): " << ratios_buffer_.size() << std::endl;
         float average = 0.0;
         for (int j=0; j<ratios_buffer_.size(); ++j)
           {
@@ -90,6 +104,8 @@ namespace trafficlight_recognizer
   bool ColorClassifier::get_lamp_states(autoware_msgs::LampStateArray& states,
                                         std::vector<float> ratios)
   {
+    std::cerr << "----- " << __func__ << std::endl;
+
     if (ratios.at(static_cast<int>(ColorClassifier::Lamp::GREEN)) > ratios_thresh_)
       {
         autoware_msgs::LampState state;
@@ -108,6 +124,7 @@ namespace trafficlight_recognizer
         state.type = autoware_msgs::LampState::RED;
         states.states.push_back(state);
       }
+
 
     return true;
   }
@@ -300,19 +317,37 @@ namespace trafficlight_recognizer
    const std::vector< std::vector<cv::Point> >& template_contours,
    std::vector<std::pair<int, double>>& index_pairs)
   {
+    std::cerr << "----- " << __func__ << std::endl;
+
     for (int i=0; i<image_contours.size(); ++i)
       {
         for (int j=0; j<template_contours.size(); ++j)
           {
-            double likelihood =
-              cv::matchShapes(image_contours.at(i), template_contours.at(j), 1, 0.0);
-            double area = cv::contourArea(image_contours);
+
+            double likelihood = 0;
+            double area = 0;
+            try
+              {
+                std::cerr << "image_contours.at(i).size(): " << image_contours.at(i).size() << std::endl;
+                std::cerr << "template_contours.at(j).size(): " << template_contours.at(j).size() << std::endl;
+
+                likelihood = cv::matchShapes(image_contours.at(i), template_contours.at(j), 1, 0.0);
+              }
+            catch (const cv::Exception& e)
+              {
+                std::cerr << "failed match shape: " << e.what() << std::endl;
+                return false;
+              }
+
+            area = cv::contourArea(image_contours);
+
             if (likelihood < pair_thresh_ && area > area_thresh_)
               {
                 std::pair<int, double> index_pair = std::make_pair(i, likelihood);
                 index_pairs.push_back(index_pair);
               }
           }
+
       }
 
     std::sort(index_pairs.begin(), index_pairs.end(),
@@ -329,6 +364,8 @@ namespace trafficlight_recognizer
    std::vector<cv::Rect>& rects,
    cv::Mat& debug_image)
   {
+    std::cerr << __func__ << std::endl;
+
     std::vector<std::pair<int, double>> index_pairs;
     get_index_pairs(image_contours, template_contours, index_pairs);
 
@@ -344,27 +381,61 @@ namespace trafficlight_recognizer
     return true;
   }
 
+  bool TrafficLightClassifierNode::generate_hsv_debug_image
+  (const std::vector<cv::Mat>& hsv_debug_images,
+   cv::Mat& hsv_debug_image)
+  {
+    std::cerr << __func__ << std::endl;
+
+    cv::Mat dst_img;
+    cv::hconcat(hsv_debug_images.at(0), hsv_debug_images.at(1), dst_img);
+    cv::hconcat(dst_img, hsv_debug_images.at(2), dst_img);
+
+    cv::Mat resized_image;
+    cv::resize(dst_img, resized_image, cv::Size(), 0.333, 1, CV_INTER_AREA);
+    hsv_debug_image = resized_image.clone();
+
+  }
+
   bool TrafficLightClassifierNode::classify
   (const cv::Mat& image,
    autoware_msgs::LampStateArray& lamp_state_array,
-   cv::Mat& debug_image)
+   cv::Mat& debug_image,
+   const cv::Rect& projected_roi)
   {
+    std::cerr << "----- " << __func__ << std::endl;
+
     ///// color classification /////
 
     std::vector<cv::Mat> filtered_images;
-    if ( !color_classifier_->hsv_filter(image, filtered_images) )
+    std::vector<cv::Mat> hsv_debug_images;
+    if ( !color_classifier_->hsv_filter(image, filtered_images, hsv_debug_images) )
       {
         return false;
       }
+
+    // generate debug image for visualize
+    cv::Mat hsv_debug_image;
+    generate_hsv_debug_image(hsv_debug_images, hsv_debug_image);
+    cv::Mat transform = debug_image
+      (cv::Rect(projected_roi.x, projected_roi.y, hsv_debug_image.cols, hsv_debug_image.rows));
+    hsv_debug_image.copyTo(transform);
 
     std::vector<float> ratios;
     if( !color_classifier_->get_color_ratios(filtered_images, ratios) )
       {
         return false;
       }
+
     autoware_msgs::LampStateArray color_lamp_states;
     color_classifier_->get_lamp_states(color_lamp_states, ratios);
-
+    std::cerr << "color_lamp_states.states.size(): " << color_lamp_states.states.size() << std::endl;
+    std::cerr << "types: ";
+    for (int i=0; i<color_lamp_states.states.size(); ++i)
+      {
+        std::cerr << color_lamp_states.states.at(i).type << ", ";
+      }
+    std::cerr << std::endl;
 
     ////// arrow classification /////
 
@@ -376,25 +447,36 @@ namespace trafficlight_recognizer
         return false;
       }
 
+
     std::vector< std::vector<cv::Point> > template_contours;
     if ( !arrow_classifier_->get_shape(arrow_classifier_->template_image_, template_contours) )
       {
         return false;
       }
 
-    std::vector<cv::Rect> rects;
-    arrow_classifier_->get_arrow_rects
-      (image_contours, template_contours, image, rects, debug_image);
+    std::cerr << "image_contours.size(): " << image_contours.size() << std::endl;
+    std::cerr << "template_contours.size(): " << template_contours.size() << std::endl;
+
+
+    // std::vector<cv::Rect> rects;
+    // arrow_classifier_->get_arrow_rects
+    //   (image_contours, template_contours, image, rects, debug_image);
+
+    // std::cerr << 5 << std::endl;
 
     autoware_msgs::LampStateArray arrow_lamp_states;
-    for (int i=0; i<rects.size(); ++i)
-      {
-        autoware_msgs::LampState state;
-        arrow_classifier_->calc_arrow_direction(gray_image, rects.at(i), state);
-        arrow_lamp_states.states.push_back(state);
-      }
+    // for (int i=0; i<rects.size(); ++i)
+    //   {
+    //     autoware_msgs::LampState state;
+    //     arrow_classifier_->calc_arrow_direction(gray_image, rects.at(i), state);
+    //     arrow_lamp_states.states.push_back(state);
+    //   }
+
+    // std::cerr << 6 << std::endl;
 
     utils_->merge_msg(color_lamp_states, arrow_lamp_states, lamp_state_array);
+
+    // std::cerr << 7 << std::endl;
 
     return true;
   }
@@ -403,6 +485,8 @@ namespace trafficlight_recognizer
   (const sensor_msgs::Image::ConstPtr& image_msg,
    const autoware_msgs::StampedRoi::ConstPtr& stamped_roi_msg)
   {
+    std::cerr << "----- " << __func__ << std::endl;
+
     autoware_msgs::TrafficLightState traffilight_state_msg;
 
     cv::Mat image;
@@ -410,43 +494,68 @@ namespace trafficlight_recognizer
 
     autoware_msgs::TrafficLightStateArray trafficlight_state_array;
     cv::Mat concatenated_debug_image;
+    cv::Mat debug_image = cv::Mat(image.size(), CV_8UC3, cv::Scalar(0,0,0));
+
     for (int i=0; i<stamped_roi_msg->roi_array.size(); ++i)
       {
         autoware_msgs::TrafficLightState trafficlight_state;
         trafficlight_state.roi = stamped_roi_msg->roi_array.at(i);
 
         sensor_msgs::RegionOfInterest region_of_interest = stamped_roi_msg->roi_array.at(i);
-        cv::Rect roi = cv::Rect(region_of_interest.x_offset,
-                                region_of_interest.y_offset,
-                                region_of_interest.width,
-                                region_of_interest.height);
+        cv::Point lt(region_of_interest.x_offset, region_of_interest.y_offset);
+        cv::Point rb(region_of_interest.x_offset + region_of_interest.width,
+                     region_of_interest.y_offset + region_of_interest.height);
+        utils_->fit_in_frame(lt, rb, image.size());
 
-        cv::Mat croped_image = image(roi);
-        cv::Mat debug_image;
+        cv::Rect roi = cv::Rect(lt.x, lt.y, rb.x - lt.x, rb.y - lt.y);
+
+        cv::Mat croped_image;
+        try
+          {
+            croped_image = image(roi);
+          }
+        catch (const cv::Exception& e)
+          {
+            std::cerr << "failed to crop image: " << e.what() << std::endl;
+          }
+
         autoware_msgs::LampStateArray lamp_state_array;
-        if ( !classify(croped_image, lamp_state_array, debug_image) )
+
+        cv::Rect projected_roi(stamped_roi_msg->roi_array.at(i).x_offset,
+                               stamped_roi_msg->roi_array.at(i).y_offset,
+                               stamped_roi_msg->roi_array.at(i).width,
+                               stamped_roi_msg->roi_array.at(i).height);
+
+
+        if ( !classify(croped_image, lamp_state_array, debug_image, projected_roi) )
           {
             ROS_ERROR("failed classify image abort callback");
             return;
           }
 
-        lamp_state_array.header = stamped_roi_msg->header;
-        trafficlight_state.states = lamp_state_array;
+        std::copy(lamp_state_array.states.begin(),
+                  lamp_state_array.states.end(),
+                  std::back_inserter(trafficlight_state.states));
         trafficlight_state.header = stamped_roi_msg->header;
+
         trafficlight_state_array.states.push_back(trafficlight_state);
+
       }
 
     trafficlight_state_array.header = stamped_roi_msg->header;
     trafficlight_state_array_pub_.publish(trafficlight_state_array);
+
     image_pub_.publish(cv_bridge::CvImage
                        (stamped_roi_msg->header,
                         sensor_msgs::image_encodings::BGR8,
-                        concatenated_debug_image).toImageMsg());
+                        debug_image).toImageMsg());
+
   }
 
 
   void TrafficLightClassifierNode::run()
   {
+    ROS_INFO("run");
     ros::NodeHandle pnh("~");
 
     color_classifier_ = std::make_shared<ColorClassifier>();
@@ -468,7 +577,9 @@ namespace trafficlight_recognizer
     image_pub_ =
       pnh.advertise<sensor_msgs::Image>("output_image", 1);
     trafficlight_state_array_pub_ =
-      pnh.advertise<autoware_msgs::TrafficLightState>("output_light_states", 1);
+      pnh.advertise<autoware_msgs::TrafficLightStateArray>("output_light_states", 1);
+
+    hoge_pub_ = pnh.advertise<std_msgs::Int32>("hogehoge", 1);
 
     image_sub_.subscribe(pnh, "input_image", 1);
     stamped_roi_sub_.subscribe(pnh, "input_stamped_roi", 1);

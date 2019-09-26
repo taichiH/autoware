@@ -1,3 +1,3 @@
 std_msgs/Header header
 sensor_msgs/RegionOfInterest roi
-autoware_msgs/LampStateArray states
+autoware_msgs/LampState[] states

@@ -16,6 +16,8 @@
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/image_encodings.h>
 #include <std_msgs/Header.h>
+#include <std_msgs/Int32.h>
+
 #include <cv_bridge/cv_bridge.h>
 
 #include <autoware_msgs/TrafficLightStateArray.h>
@@ -63,8 +65,10 @@ namespace trafficlight_recognizer
 
     bool get_params(const ros::NodeHandle& pnh);
 
+
     bool hsv_filter(const cv::Mat &input_image,
-                    std::vector<cv::Mat> &output_images);
+                    std::vector<cv::Mat> &output_images,
+                    std::vector<cv::Mat>& debug_images);
 
     bool get_color_ratios(const std::vector<cv::Mat> &input_images,
                           std::vector<float> &ratios);
@@ -169,7 +173,7 @@ namespace trafficlight_recognizer
 
     message_filters::Subscriber<autoware_msgs::StampedRoi> stamped_roi_sub_;
 
-    bool is_approximate_sync_ = false;
+    bool is_approximate_sync_ = true;
 
     ColorClassifierPtr color_classifier_;
 
@@ -181,6 +185,8 @@ namespace trafficlight_recognizer
 
     ros::Publisher trafficlight_state_array_pub_;
 
+    ros::Publisher hoge_pub_;
+
     // functions
 
     void callback
@@ -190,7 +196,14 @@ namespace trafficlight_recognizer
     bool classify
       (const cv::Mat& image,
        autoware_msgs::LampStateArray& lamp_state_array,
-       cv::Mat& debug_image);
+       cv::Mat& debug_image,
+       const cv::Rect& projected_roi);
+
+    bool generate_hsv_debug_image
+      (const std::vector<cv::Mat>& hsv_debug_images,
+       cv::Mat& hsv_debug_image);
+
+
 
     void run();
 
