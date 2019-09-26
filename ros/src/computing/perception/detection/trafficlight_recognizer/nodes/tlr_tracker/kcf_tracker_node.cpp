@@ -18,6 +18,7 @@ namespace trafficlight_recognizer
     multi_kcf_tracker_ = std::make_shared<MultiKcfTracker>(buffer_size_, interpolation_frequency_);
 
     output_rois_pub_ = pnh_.advertise<autoware_msgs::StampedRoi>("output_rois", 1);
+    output_debug_pub_ = pnh_.advertise<sensor_msgs::Image>("output_debug_image", 1);
 
     // boxes callback
     boxes_sub = pnh_.subscribe
@@ -45,7 +46,17 @@ namespace trafficlight_recognizer
   void KcfTrackerNode::boxes_callback(const autoware_msgs::StampedRoi::ConstPtr& boxes)
   {
     boost::mutex::scoped_lock lock(mutex_);
+
+    detected_boxes_.clear();
+    detected_boxes_signals_.clear();
     utils_->roismsg2cvrects(boxes->roi_array, detected_boxes_);
+
+    for (auto signal : boxes->signals)
+      {
+        detected_boxes_signals_.push_back(static_cast<int>(signal));
+      }
+
+
     detected_boxes_stamp_ = boxes->header.stamp.toSec();
   }
 
@@ -54,23 +65,24 @@ namespace trafficlight_recognizer
                                const autoware_msgs::StampedRoi::ConstPtr& projected_roi_msg)
   {
     boost::mutex::scoped_lock lock(mutex_);
-
     cv::Mat original_image;
-    std::vector<cv::Rect> projected_rois;
-    std::vector<cv::Rect> init_boxes;
     utils_->rosmsg2cvmat(image_msg, original_image);
-    utils_->roismsg2cvrects(projected_roi_msg->roi_array, projected_rois);
+
+    // std::vector<cv::Rect> projected_rois;
+    // utils_->roismsg2cvrects(projected_roi_msg->roi_array, projected_rois);
 
     std::vector<cv::Rect> output_boxes;
     std::vector<int> output_signals;
+    cv::Mat debug_image;
     multi_kcf_tracker_->run(projected_roi_msg->signals,
+                            detected_boxes_signals_,
                             original_image,
-                            projected_rois,
-                            init_boxes,
-                            image_msg->header.stamp.toSec(),
+                            detected_boxes_,
+                            projected_roi_msg->header.stamp.toSec(),
                             detected_boxes_stamp_,
                             output_boxes,
-                            output_signals);
+                            output_signals,
+                            debug_image);
 
     autoware_msgs::StampedRoi output_rois_msg;
     utils_->cvrects2roismsg(output_boxes, output_rois_msg.roi_array);
@@ -82,6 +94,9 @@ namespace trafficlight_recognizer
     output_rois_msg.header = projected_roi_msg->header;
     output_rois_pub_.publish(output_rois_msg);
 
+    output_debug_pub_.publish(cv_bridge::CvImage(projected_roi_msg->header,
+                                                sensor_msgs::image_encodings::BGR8,
+                                                 debug_image).toImageMsg());
   }
 
 } // namespace trafficlight_recognizer

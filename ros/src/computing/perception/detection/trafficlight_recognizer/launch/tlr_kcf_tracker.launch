@@ -8,9 +8,9 @@
         pkg="nodelet" type="nodelet"
         output="screen"
         args="standalone trafficlight_recognizer/KcfTrackerNode">
-    <remap from="input_detected_boxes" to="$(arg input_detected_boxes)" />
-    <remap from="input_image" to="$(arg input_image)" />
-    <remap from="input_stamped_roi" to="$(arg input_stamped_roi)" />
+    <remap from="~input_detected_boxes" to="$(arg input_detected_boxes)" />
+    <remap from="~input_image" to="$(arg input_image)" />
+    <remap from="~input_stamped_roi" to="$(arg input_stamped_roi)" />
     <rosparam subst_value="true">
       kernel_sigma           : 0.5
       cell_size              : 4

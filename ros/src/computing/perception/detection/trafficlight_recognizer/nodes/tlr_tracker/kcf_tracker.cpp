@@ -5,12 +5,10 @@ namespace trafficlight_recognizer
 
   /// KcfTracker
 
-  KcfTracker::KcfTracker(const cv::Rect& projected_roi,
-                         const cv::Rect& init_box,
+  KcfTracker::KcfTracker(const cv::Rect& init_box,
                          const std::list<cv::Mat>& interpolation_images,
                          const bool init_box_stamp_changed)
   {
-    projected_roi_ = projected_roi;
     init_box_ = init_box;
     initialize_ = init_box_stamp_changed;
     std::copy(interpolation_images.begin(),
@@ -18,12 +16,10 @@ namespace trafficlight_recognizer
               std::back_inserter(interpolation_images_));
   }
 
-  bool KcfTracker::update_parameters(const cv::Rect& projected_roi,
-                                     const cv::Rect& init_box,
+  bool KcfTracker::update_parameters(const cv::Rect& init_box,
                                      const std::list<cv::Mat>& interpolation_images,
                                      const bool init_box_stamp_changed)
   {
-    projected_roi_ = projected_roi;
     init_box_ = init_box;
     initialize_ = init_box_stamp_changed;
     std::copy(interpolation_images.begin(),
@@ -46,7 +42,7 @@ namespace trafficlight_recognizer
             cv::Mat image = interpolation_images.front();
 
             track(image);
- 
+
             interpolation_images.pop_front();
           }
 
@@ -140,7 +136,6 @@ namespace trafficlight_recognizer
 
   bool MultiKcfTracker::push_to_tracker_map(std::map<int, KcfTrackerPtr>& tracker_map,
                                             const int signal,
-                                            const cv::Rect& projected_roi,
                                             const cv::Rect& init_box,
                                             const std::list<cv::Mat>& interpolation_images,
                                             const bool init_box_stamp_changed)
@@ -151,7 +146,7 @@ namespace trafficlight_recognizer
         if ( tracker_map.find(signal) == tracker_map.end() )
           {
             KcfTrackerPtr tracker = std::make_shared<KcfTracker>
-              (projected_roi, init_box, interpolation_images, init_box_stamp_changed);
+              (init_box, interpolation_images, init_box_stamp_changed);
             tracker_map.emplace(signal, tracker);
           }
         else
@@ -162,7 +157,7 @@ namespace trafficlight_recognizer
 
             auto kcf_tracker = tracker_map.at(signal);
             kcf_tracker->update_parameters
-              (projected_roi, init_box, interpolation_images, init_box_stamp_changed);
+              (init_box, interpolation_images, init_box_stamp_changed);
           }
       }
     catch (const std::out_of_range& e)
@@ -221,8 +216,8 @@ namespace trafficlight_recognizer
   }
 
   bool MultiKcfTracker::get_init_box_stamped_index(const std::vector<double>& image_stamp_buffer,
-                                                  int& stamped_index,
-                                                  double init_box_stamp)
+                                                   int& stamped_index,
+                                                   double init_box_stamp)
   {
     stamped_index = 0;
     bool found_stamped_index = false;
@@ -239,10 +234,13 @@ namespace trafficlight_recognizer
         return false;
       }
 
+
     for (int i=image_stamp_buffer.size() - 1; i>=0; i--)
       {
+
         if (image_stamp_buffer.at(i) - init_box_stamp <= 0)
           {
+
             found_stamped_index = true;
             if (std::abs(image_stamp_buffer.at(i+1) - init_box_stamp) <
                 std::abs(image_stamp_buffer.at(i) - init_box_stamp))
@@ -281,6 +279,11 @@ namespace trafficlight_recognizer
     if ( init_box_stamp_changed )
       {
         int stamped_index = 0;
+
+        // std::cerr << "target" << std::endl;
+        // std::cout << std::setprecision(100) << init_box_stamp << std::endl;
+        // std::cerr << "list" << std::endl;
+
         if ( !get_init_box_stamped_index(image_stamp_buffer, stamped_index, init_box_stamp))
           {
             std::cerr << "failed to get init_box_stamped_index" << std::endl;
@@ -302,63 +305,81 @@ namespace trafficlight_recognizer
 
 
   bool MultiKcfTracker::run(const std::vector<int>& signals,
+                            const std::vector<int>& init_boxes_signals,
                             const cv::Mat& original_image,
-                            const std::vector<cv::Rect>& projected_rois,
                             const std::vector<cv::Rect>& init_boxes,
                             const double image_stamp,
                             const double init_box_stamp,
                             std::vector<cv::Rect>& output_boxes,
-                            std::vector<int>& output_signals)
+                            std::vector<int>& output_signals,
+                            cv::Mat& debug_image)
   {
 
     // images buffer for interpolation
     if (! create_buffer(original_image, image_stamp) )
       {
-        prev_init_box_stamp_ = init_box_stamp_;
+        prev_init_box_stamp_ = init_box_stamp;
         return false;
       }
 
-    init_box_stamp_ = init_box_stamp;
-
-    if ( init_box_stamp_ != 0 )
+    if ( init_box_stamp != 0 )
       {
         // create interpolation images caused by detection latency
         std::list<cv::Mat> interpolation_images;
-        bool init_box_stamp_changed = init_box_stamp_ != prev_init_box_stamp_;
+        bool init_box_stamp_changed = init_box_stamp != prev_init_box_stamp_;
 
 
         if ( !get_interpolation_images
              (init_box_stamp_changed, init_box_stamp,
               image_buffer_, image_stamp_buffer_, interpolation_images))
           {
-            prev_init_box_stamp_ = init_box_stamp_;
+            prev_init_box_stamp_ = init_box_stamp;
             return false;
           }
-
 
         // remove unnecessary tracker map
-        if ( !pop_from_tracker_map(tracker_map_, signals) )
+        // do not track object that cannot detect by tlr_detector
+        if ( !pop_from_tracker_map(tracker_map_, init_boxes_signals) )
           {
-            prev_init_box_stamp_ = init_box_stamp_;
+            prev_init_box_stamp_ = init_box_stamp;
             return false;
           }
 
-        for (int i=0; i<signals.size(); ++i)
+        // std::cerr << "sizes -----------" << std::endl;
+        // std::cerr << signals.size() << std::endl;
+        // std::cerr << init_boxes.size() << std::endl;
+        // std::cerr << "------------------" << std::endl;
+        // for (auto init_boxes_signal : init_boxes_signals)
+        //   {
+        //     std::cerr << init_boxes_signal << ", ";
+        //   }
+        // std::cerr << std::endl;
+        // for (auto signal : signals)
+        //   {
+        //     std::cerr << signal << ", ";
+        //   }
+        // std::cerr << std::endl;
+
+
+        debug_image = interpolation_images.back().clone();
+
+        for (int i=0; i<init_boxes_signals.size(); ++i)
           {
-            auto signal = signals.at(i);
-            auto projected_roi = projected_rois.at(i);
+            auto signal = init_boxes_signals.at(i);
             auto init_box = init_boxes.at(i);
 
+            // std::cerr << "---" << std::endl;
+            // std::cerr << init_box.x << ", " << init_box.y <<
+            //   ", " << init_box.width << ", " << init_box.height << std::endl;
 
             if ( !push_to_tracker_map
                  (tracker_map_,
                   signal,
-                  projected_roi,
                   init_box,
                   interpolation_images,
                   init_box_stamp_changed) )
               {
-                prev_init_box_stamp_ = init_box_stamp_;
+                prev_init_box_stamp_ = init_box_stamp;
                 return false;
               }
 
@@ -370,6 +391,8 @@ namespace trafficlight_recognizer
                 return false;
               }
 
+            cv::rectangle(debug_image, output_box, CV_RGB(0,0,255), 2);
+
             output_boxes.push_back(output_box);
             output_signals.push_back(signal);
           }
@@ -379,7 +402,7 @@ namespace trafficlight_recognizer
       {
       }
 
-    prev_init_box_stamp_ = init_box_stamp_;
+    prev_init_box_stamp_ = init_box_stamp;
 
     return true;
 

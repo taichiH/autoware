@@ -129,10 +129,10 @@ class TLRSSDDetector():
             cv2.rectangle(display_img, tuple(box_lt), tuple(box_rb), (255,0, 0), 2)
 
             stamped_roi.roi_array.append(
-                RegionOfInterest(x_offset=lt[0],
-                                 y_offset=lt[1],
-                                 width=rb[0] - lt[0],
-                                 height=rb[1] - lt[1]
+                RegionOfInterest(x_offset=box_lt[0],
+                                 y_offset=box_lt[1],
+                                 width=box_rb[0] - box_lt[0],
+                                 height=box_rb[1] - box_lt[1]
                 )
             )
             stamped_roi.signals.append(signal)

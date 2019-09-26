@@ -18,15 +18,13 @@ namespace trafficlight_recognizer
   {
   public:
 
-    KcfTracker(const cv::Rect& projected_roi,
-               const cv::Rect& init_box,
+    KcfTracker(const cv::Rect& init_box,
                const std::list<cv::Mat>& interpolation_images,
                const bool init_box_stamp_changed);
 
     bool run(cv::Rect& output_box);
 
-    bool update_parameters(const cv::Rect& projected_roi,
-                           const cv::Rect& init_box,
+    bool update_parameters(const cv::Rect& init_box,
                            const std::list<cv::Mat>& interpolation_images,
                            const bool init_box_stamp_changed);
 
@@ -35,8 +33,6 @@ namespace trafficlight_recognizer
     bool initialize_ = false;
 
     int signal_ = 0;
-
-    cv::Rect projected_roi_;
 
     cv::Rect init_box_;
 
@@ -62,8 +58,6 @@ namespace trafficlight_recognizer
 
     std::map<int, KcfTrackerPtr> tracker_map_;
 
-    double init_box_stamp_ = 0;
-
     double prev_init_box_stamp_ = 0;
 
     std::vector<cv::Mat> image_buffer_;
@@ -79,7 +73,6 @@ namespace trafficlight_recognizer
 
     bool push_to_tracker_map(std::map<int, KcfTrackerPtr>& tracker_map,
                              const int signal,
-                             const cv::Rect& projected_roi,
                              const cv::Rect& init_box,
                              const std::list<cv::Mat>& interpolation_images,
                              const bool init_box_stamp_changed);
@@ -102,13 +95,14 @@ namespace trafficlight_recognizer
                                   std::list<cv::Mat>& interpolation_images);
 
     bool run(const std::vector<int>& signals,
+             const std::vector<int>& init_boxes_signals,
              const cv::Mat& original_image,
-             const std::vector<cv::Rect>& projected_rois,
              const std::vector<cv::Rect>& init_boxes,
              const double image_stamp,
              const double init_box_stamp,
              std::vector<cv::Rect>& output_boxes,
-             std::vector<int>& output_signals);
+             std::vector<int>& output_signals,
+             cv::Mat& debug_image);
 
   private:
 
