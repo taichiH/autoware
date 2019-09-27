@@ -411,7 +411,6 @@ namespace trafficlight_recognizer
     cv::Mat resized_image;
     cv::resize(dst_img, resized_image, cv::Size(), 0.333, 1, CV_INTER_AREA);
     hsv_debug_image = resized_image.clone();
-
   }
 
   bool TrafficLightClassifierNode::classify
@@ -433,8 +432,14 @@ namespace trafficlight_recognizer
     // generate debug image for visualize
     cv::Mat hsv_debug_image;
     generate_hsv_debug_image(hsv_images, hsv_debug_image);
+
+    cv::Point lt(projected_roi.x, projected_roi.y);
+    cv::Point rb(projected_roi.x + hsv_debug_image.cols,
+                 projected_roi.y + hsv_debug_image.rows);
+    utils_->fit_in_frame(lt, rb, color_debug_image.size());
+
     cv::Mat transform = color_debug_image
-      (cv::Rect(projected_roi.x, projected_roi.y, hsv_debug_image.cols, hsv_debug_image.rows));
+      (cv::Rect(lt.x, lt.y, rb.x - lt.x, rb.y - lt.y));
     hsv_debug_image.copyTo(transform);
 
     std::vector<float> ratios;
@@ -445,13 +450,6 @@ namespace trafficlight_recognizer
 
     autoware_msgs::LampStateArray color_lamp_states;
     color_classifier_->get_lamp_states(color_lamp_states, ratios);
-    std::cerr << "types: ";
-    for (int i=0; i<color_lamp_states.states.size(); ++i)
-      {
-        std::cerr << color_lamp_states.states.at(i).type << ", ";
-      }
-    std::cerr << std::endl;
-
 
 
     ////// arrow classification /////
@@ -475,8 +473,14 @@ namespace trafficlight_recognizer
     cv::drawContours(dst_contour_img, image_contours, -1, cv::Scalar(0,0,255), 3);
 
     // paste
+
+    cv::Point arrow_lt(projected_roi.x, projected_roi.y);
+    cv::Point arrow_rb(projected_roi.x + dst_contour_img.cols,
+                       projected_roi.y + dst_contour_img.rows);
+    utils_->fit_in_frame(arrow_lt, arrow_rb, arrow_debug_image.size());
+
     cv::Mat arrow_transform = arrow_debug_image
-      (cv::Rect(projected_roi.x, projected_roi.y, dst_contour_img.cols, dst_contour_img.rows));
+      (cv::Rect(arrow_lt.x, arrow_lt.y, arrow_rb.x - arrow_lt.x, arrow_rb.y - arrow_lt.y));
     dst_contour_img.copyTo(arrow_transform);
 
     // std::vector<cv::Rect> rects;
@@ -501,8 +505,6 @@ namespace trafficlight_recognizer
   (const sensor_msgs::Image::ConstPtr& image_msg,
    const autoware_msgs::StampedRoi::ConstPtr& stamped_roi_msg)
   {
-    std::cerr << " --- " << __func__ << std::endl;
-
     autoware_msgs::TrafficLightState traffilight_state_msg;
 
     cv::Mat image;
@@ -604,8 +606,6 @@ namespace trafficlight_recognizer
 
     trafficlight_state_array_pub_ =
       pnh.advertise<autoware_msgs::TrafficLightStateArray>("output_light_states", 1);
-
-    hoge_pub_ = pnh.advertise<std_msgs::Int32>("hogehoge", 1);
 
     image_sub_.subscribe(pnh, "input_image", 1);
     stamped_roi_sub_.subscribe(pnh, "input_stamped_roi", 1);

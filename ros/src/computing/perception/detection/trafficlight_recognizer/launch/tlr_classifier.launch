@@ -14,11 +14,11 @@
       green_max    : [234, 255, 255]
       green_min    : [90,  125, 80 ]
       yellow_max   : [255, 255, 255]
-      yellow_min   : [0,   0,   0]
+      yellow_min   : [255, 255, 255]
       red_max      : [360, 255, 255]
-      red_min      : [0,   95,  215]
-      buffer_size  : 100
-      ratios_thresh: 0.35
+      red_min      : [0  , 95 , 215]
+      buffer_size  : 5
+      ratios_thresh: 0.02
     </rosparam>
   </node>
 

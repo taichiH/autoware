@@ -16,7 +16,6 @@
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/image_encodings.h>
 #include <std_msgs/Header.h>
-#include <std_msgs/Int32.h>
 
 #include <cv_bridge/cv_bridge.h>
 
@@ -187,8 +186,6 @@ namespace trafficlight_recognizer
     ros::Publisher arrow_debug_pub_;
 
     ros::Publisher trafficlight_state_array_pub_;
-
-    ros::Publisher hoge_pub_;
 
     // functions
 
