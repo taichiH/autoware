@@ -112,6 +112,17 @@ add_dependencies(libutils
   )
 
 
+### tlr_visualizer ###
+add_executable(tlr_visualizer
+  nodes/tlr_visualizer/visualizer_node.cpp
+  )
+target_link_libraries(tlr_visualizer
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+  libutils
+  )
+
+
 ### tlr_classifier ###
 add_executable(tlr_classifier
   nodes/tlr_classifier/traffic_light_classifier_node.cpp
