@@ -118,7 +118,7 @@ namespace trafficlight_recognizer
 
     ~ArrowClassifier() {};
 
-    bool get_shape(cv::Mat& image, std::vector<std::vector<cv::Point> >& contours);
+    bool get_shape(const cv::Mat& input_image, std::vector<std::vector<cv::Point> >& contours);
 
     bool calc_arrow_direction(const cv::Mat& image, const cv::Rect rect, autoware_msgs::LampState& state);
 
@@ -136,7 +136,8 @@ namespace trafficlight_recognizer
     bool get_index_pairs
       (const std::vector< std::vector<cv::Point> >& image_contours,
        const std::vector< std::vector<cv::Point> >& template_contours,
-       std::vector<std::pair<int, double>>& index_pairs);
+       std::vector<std::pair<int, double>>& index_pairs,
+       const cv::Size& image_size);
 
   };
 
@@ -183,6 +184,8 @@ namespace trafficlight_recognizer
 
     ros::Publisher image_pub_;
 
+    ros::Publisher arrow_debug_pub_;
+
     ros::Publisher trafficlight_state_array_pub_;
 
     ros::Publisher hoge_pub_;
@@ -196,7 +199,8 @@ namespace trafficlight_recognizer
     bool classify
       (const cv::Mat& image,
        autoware_msgs::LampStateArray& lamp_state_array,
-       cv::Mat& debug_image,
+       cv::Mat& color_debug_image,
+       cv::Mat& arrow_debug_image,
        const cv::Rect& projected_roi);
 
     bool generate_hsv_debug_image
