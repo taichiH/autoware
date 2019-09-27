@@ -211,14 +211,6 @@ namespace trafficlight_recognizer
                                              const cv::Rect rect,
                                              autoware_msgs::LampState& state)
   {
-    std::cerr << __func__ << std::endl;
-
-    std::cerr << image.cols << ", " << image.rows << std::endl;
-
-    std::cerr << rect.x << ", "
-              << rect.y << ", "
-              << rect.width << ", "
-              << rect.height << std::endl;
 
     cv::Mat lt_cell = image(cv::Rect(rect.x,
                                      rect.y,
@@ -321,8 +313,6 @@ namespace trafficlight_recognizer
    std::vector<std::pair<int, double>>& index_pairs,
    const cv::Size& image_size)
   {
-    std::cerr << __func__ << std::endl;
-
     for (int i=0; i<image_contours.size(); ++i)
       {
         for (int j=0; j<template_contours.size(); ++j)
@@ -395,8 +385,6 @@ namespace trafficlight_recognizer
    std::vector<cv::Rect>& rects,
    cv::Mat& debug_image)
   {
-    std::cerr << __func__ << std::endl;
-
     std::vector<std::pair<int, double>> index_pairs;
     get_index_pairs(image_contours, template_contours, index_pairs, image.size());
 
@@ -457,7 +445,6 @@ namespace trafficlight_recognizer
 
     autoware_msgs::LampStateArray color_lamp_states;
     color_classifier_->get_lamp_states(color_lamp_states, ratios);
-    std::cerr << "color_lamp_states.states.size(): " << color_lamp_states.states.size() << std::endl;
     std::cerr << "types: ";
     for (int i=0; i<color_lamp_states.states.size(); ++i)
       {
@@ -483,32 +470,27 @@ namespace trafficlight_recognizer
         return false;
       }
 
-    std::cerr << "image_contours.size(): " << image_contours.size() << std::endl;
-    std::cerr << "template_contours.size(): " << template_contours.size() << std::endl;
-
+    // debug contours
     cv::Mat dst_contour_img = cv::Mat::zeros(image.rows, image.cols, CV_8UC3);
-    // cv::drawContours(dst_contour_img, image_contours, -1, cv::Scalar(0,0,255), 3);
-
-    std::vector<cv::Rect> rects;
-    arrow_classifier_->get_arrow_rects
-      (image_contours, template_contours, image, rects, dst_contour_img);
-
+    cv::drawContours(dst_contour_img, image_contours, -1, cv::Scalar(0,0,255), 3);
 
     // paste
     cv::Mat arrow_transform = arrow_debug_image
       (cv::Rect(projected_roi.x, projected_roi.y, dst_contour_img.cols, dst_contour_img.rows));
     dst_contour_img.copyTo(arrow_transform);
 
+    // std::vector<cv::Rect> rects;
+    // arrow_classifier_->get_arrow_rects
+    //   (image_contours, template_contours, image, rects, dst_contour_img);
 
-    std::cerr << "rects.size(): " << rects.size() << std::endl;
 
     autoware_msgs::LampStateArray arrow_lamp_states;
-    for (int i=0; i<rects.size(); ++i)
-      {
-        autoware_msgs::LampState state;
-        arrow_classifier_->calc_arrow_direction(gray_image, rects.at(i), state);
-        arrow_lamp_states.states.push_back(state);
-      }
+    // for (int i=0; i<rects.size(); ++i)
+    //   {
+    //     autoware_msgs::LampState state;
+    //     arrow_classifier_->calc_arrow_direction(gray_image, rects.at(i), state);
+    //     arrow_lamp_states.states.push_back(state);
+    //   }
 
     utils_->merge_msg(color_lamp_states, arrow_lamp_states, lamp_state_array);
 
@@ -519,6 +501,8 @@ namespace trafficlight_recognizer
   (const sensor_msgs::Image::ConstPtr& image_msg,
    const autoware_msgs::StampedRoi::ConstPtr& stamped_roi_msg)
   {
+    std::cerr << " --- " << __func__ << std::endl;
+
     autoware_msgs::TrafficLightState traffilight_state_msg;
 
     cv::Mat image;
