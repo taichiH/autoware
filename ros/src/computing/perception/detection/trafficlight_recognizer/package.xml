@@ -3,7 +3,7 @@
     <name>trafficlight_recognizer</name>
     <version>1.10.0</version>
     <description>The trafficlight_recognizer package</description>
-    <maintainer email="hirabayashi@ertl.jp">Manato HIRABAYASHI</maintainer>
+    <maintainer email="higashide@jsk.imi.i.u-tokyo.ac.jp">Taichi Higashide</maintainer>
     <license>Apache 2</license>
     <buildtool_depend>catkin</buildtool_depend>
     <buildtool_depend>autoware_build_flags</buildtool_depend>
@@ -16,7 +16,6 @@
     <build_depend>vector_map_server</build_depend>
     <build_depend>geometry_msgs</build_depend>
     <build_depend>waypoint_follower</build_depend>
-    <build_depend>qtbase5-dev</build_depend>
     <build_depend>cv_bridge</build_depend>
     <build_depend>eigen</build_depend>
     <build_depend>libvectormap</build_depend>
@@ -27,6 +26,7 @@
     <build_depend>visualization_msgs</build_depend>
     <build_depend>image_transport</build_depend>
     <build_depend>nodelet</build_depend>
+    <build_depend>jsk_recognition_msgs</build_depend>
 
     <run_depend>cmake_modules</run_depend>
     <run_depend>runtime_manager</run_depend>
@@ -49,6 +49,7 @@
     <run_depend>visualization_msgs</run_depend>
     <run_depend>image_transport</run_depend>
     <run_depend>nodelet</run_depend>
+    <run_depend>jsk_recognition_msgs</run_depend>
 
     <export>
       <nodelet plugin="${prefix}/plugins/trafficlight_recognizer.xml"/>

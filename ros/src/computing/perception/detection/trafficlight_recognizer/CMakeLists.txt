@@ -8,12 +8,6 @@ execute_process(
 
 set(ROS_VERSION $ENV{ROS_DISTRO})
 
-
-find_package(autoware_build_flags REQUIRED)
-
-find_package(autoware_msgs REQUIRED)
-
-find_package(vector_map REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   cmake_modules
   cv_bridge
@@ -31,6 +25,7 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
   nodelet
   eigen_conversions
+  jsk_recognition_msgs
   )
 
 find_package(OpenCV REQUIRED)
@@ -52,9 +47,6 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-find_package(Qt5Core REQUIRED)
-find_package(Qt5Widgets REQUIRED)
-
 find_package(OpenGL REQUIRED)
 
 ###################################
@@ -62,14 +54,12 @@ find_package(OpenGL REQUIRED)
 ###################################
 include_directories(
   include
-  ${catkin_INCLUDE_DIRS}
-  ${vector_map_INCLUDE_DIRS}
-  ${autoware_msgs_INCLUDE_DIRS}
   ${Eigen3_INCLUDE_DIRS}
   ${Opencv_INCLUDE_DIRS}
   ${CMAKE_SOURCE_DIR}/nodes/tlr_tracker/libs/src/
   ${CMAKE_SOURCE_DIR}/nodes/tlr_tracker/libs/src/piotr_fhog
   ${CMAKE_SOURCE_DIR}/nodes/tlr_tracker/libs/src/cn
+  ${catkin_INCLUDE_DIRS}
   )
 
 catkin_package(
@@ -90,6 +80,7 @@ catkin_package(
   visualization_msgs
   waypoint_follower
   image_transport
+  jsk_recognition_msgs
   LIBRARIES
   libutils
   libtrafficlightkcf
@@ -101,12 +92,10 @@ set(CMAKE_CXX_FLAGS "-O2 -Wall -Wunused-variable ${CMAKE_CXX_FLAGS} -fpic -std=c
 add_library(libutils
   lib/utils.cpp
   )
-
 target_link_libraries(libutils
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
   )
-
 add_dependencies(libutils
   ${catkin_EXPORTED_TARGETS}
   )
@@ -139,12 +128,10 @@ target_link_libraries(tlr_classifier
 add_executable(feat_proj
   nodes/feat_proj/feat_proj.cpp
   )
-
 target_link_libraries(feat_proj
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
   )
-
 add_dependencies(feat_proj
   ${catkin_EXPORTED_TARGETS}
   )
@@ -156,23 +143,21 @@ add_subdirectory(nodes/tlr_tracker/libs/src
 add_library(libtrafficlightkcf
   nodes/tlr_tracker/kcf_tracker.cpp
   )
-
 target_link_libraries(libtrafficlightkcf
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
   kcf
   )
-
 add_dependencies(libtrafficlightkcf
   ${catkin_EXPORTED_TARGETS}
   )
+
 
 ### nodelet ###
 add_library(${PROJECT_NAME} SHARED
   nodes/feat_proj/feat_proj_bbox.cpp
   nodes/tlr_tracker/kcf_tracker_node.cpp
   )
-
 target_link_libraries(
   ${PROJECT_NAME}
   ${catkin_LIBRARIES}
