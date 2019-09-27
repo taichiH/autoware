@@ -165,10 +165,6 @@ namespace trafficlight_recognizer
           }
         else
           {
-            for (auto it = tracker_map.begin(); it != tracker_map.end(); ++it)
-              {
-              }
-
             auto kcf_tracker = tracker_map.at(signal);
             kcf_tracker->update_parameters
               (init_box, interpolation_images, init_box_stamp_changed);
@@ -342,7 +338,6 @@ namespace trafficlight_recognizer
         std::list<cv::Mat> interpolation_images;
         bool init_box_stamp_changed = init_box_stamp != prev_init_box_stamp_;
 
-
         if ( !get_interpolation_images
              (init_box_stamp_changed, init_box_stamp,
               image_buffer_, image_stamp_buffer_, interpolation_images))
@@ -359,32 +354,12 @@ namespace trafficlight_recognizer
             return false;
           }
 
-        // std::cerr << "sizes -----------" << std::endl;
-        // std::cerr << signals.size() << std::endl;
-        // std::cerr << init_boxes.size() << std::endl;
-        // std::cerr << "------------------" << std::endl;
-        // for (auto init_boxes_signal : init_boxes_signals)
-        //   {
-        //     std::cerr << init_boxes_signal << ", ";
-        //   }
-        // std::cerr << std::endl;
-        // for (auto signal : signals)
-        //   {
-        //     std::cerr << signal << ", ";
-        //   }
-        // std::cerr << std::endl;
-
-
         debug_image = interpolation_images.back().clone();
 
         for (int i=0; i<init_boxes_signals.size(); ++i)
           {
             auto signal = init_boxes_signals.at(i);
             auto init_box = init_boxes.at(i);
-
-            // std::cerr << "---" << std::endl;
-            // std::cerr << init_box.x << ", " << init_box.y <<
-            //   ", " << init_box.width << ", " << init_box.height << std::endl;
 
             if ( !push_to_tracker_map
                  (tracker_map_,
