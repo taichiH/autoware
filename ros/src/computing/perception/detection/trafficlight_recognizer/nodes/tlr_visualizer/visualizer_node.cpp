@@ -7,7 +7,8 @@ namespace trafficlight_recognizer
   (const sensor_msgs::Image::ConstPtr& image_msg,
    const autoware_msgs::StampedRoi::ConstPtr& projected_roi_msg,
    const autoware_msgs::StampedRoi::ConstPtr& tracker_roi_msg,
-   const autoware_msgs::Signals::ConstPtr& signals_msg)
+   const autoware_msgs::Signals::ConstPtr& signals_msg,
+   const autoware_msgs::TrafficLightStateArray::ConstPtr& light_state_msg)
   {
 
     cv::Mat image;
@@ -63,6 +64,23 @@ namespace trafficlight_recognizer
           }
       }
 
+    // generate lamp state map
+    std::map<int, std::vector<autoware_msgs::LampState> > lamp_states_map;
+    for (int i=0; i<signals_msg->Signals.size(); ++i)
+      {
+        autoware_msgs::ExtractedPosition signal_msg = signals_msg->Signals.at(i);
+        int signal = signal_msg.signalId;
+
+        for (auto light_state : light_state_msg->states)
+          {
+            if (signal == light_state.signal)
+              {
+                lamp_states_map.emplace(signal, light_state.states);
+              }
+          }
+      }
+
+
     if (tracker_roi_map.size() != projected_roi_map.size() ||
         tracker_roi_map.size() != pos3d_map.size())
         return;
@@ -73,10 +91,17 @@ namespace trafficlight_recognizer
 
     for (auto it = tracker_roi_map.begin(); it != tracker_roi_map.end(); ++it)
       {
-        // visualize on image
+        // visualize rects on image
         int signal = it->first;
         cv::rectangle(image, tracker_roi_map.at(signal), CV_RGB(0,255,0), 2);
         cv::rectangle(image, projected_roi_map.at(signal), CV_RGB(0,0,255), 2);
+
+        // visualize classification result on image
+        for (auto lamp_state : lamp_states_map.at(signal))
+          {
+            // TODO visualize lamp state on image
+          }
+
 
         // visualize on rviz
         jsk_recognition_msgs::BoundingBox bbox;
@@ -140,22 +165,24 @@ namespace trafficlight_recognizer
     projected_roi_sub_.subscribe(pnh, "input_projected_roi", 1);
     tracker_roi_sub_.subscribe(pnh, "input_tracker_roi", 1);
     signals_sub_.subscribe(pnh, "input_signals", 1);
+    light_state_sub_.subscribe(pnh, "input_light_state", 1);
+
 
     if (is_approximate_sync_)
       {
         approximate_sync_ =
           boost::make_shared<message_filters::Synchronizer<ApproximateSyncPolicy> >(100);
-        approximate_sync_->connectInput(image_sub_, projected_roi_sub_, tracker_roi_sub_, signals_sub_);
+        approximate_sync_->connectInput(image_sub_, projected_roi_sub_, tracker_roi_sub_, signals_sub_, light_state_sub_);
         approximate_sync_->registerCallback
-          (boost::bind(&TrafficLightVisualizerNode::callback, this, _1, _2, _3, _4));
+          (boost::bind(&TrafficLightVisualizerNode::callback, this, _1, _2, _3, _4, _5));
       }
     else
       {
         sync_  =
           boost::make_shared<message_filters::Synchronizer<SyncPolicy> >(100);
-        approximate_sync_->connectInput(image_sub_, projected_roi_sub_, tracker_roi_sub_, signals_sub_);
+        approximate_sync_->connectInput(image_sub_, projected_roi_sub_, tracker_roi_sub_, signals_sub_, light_state_sub_);
         sync_->registerCallback
-          (boost::bind(&TrafficLightVisualizerNode::callback, this, _1, _2, _3, _4));
+          (boost::bind(&TrafficLightVisualizerNode::callback, this, _1, _2, _3, _4, _5));
       }
 
     ros::spin();

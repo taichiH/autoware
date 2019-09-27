@@ -40,8 +40,6 @@ namespace trafficlight_recognizer
                                   cv::Rect& output_box)
   {
 
-    std::cerr << "interpolation_images.size(): " << interpolation_images.size() << std::endl;
-
     try
       {
         int num_interpolation = interpolation_images.size();
@@ -84,8 +82,6 @@ namespace trafficlight_recognizer
   bool KcfTracker::run(cv::Rect& output_box)
   {
 
-    std::cerr << "kcf tracker run !!!" << std::endl;
-
     if ( interpolation_images_.empty() )
       {
         std::cerr << "interpolation_images is empty" << std::endl;
@@ -114,7 +110,6 @@ namespace trafficlight_recognizer
             return false;
           }
 
-        std::cerr << "interpolation update " << std::endl;
 
         // update if interpolation_images_ size > 0
         if ( !update_tracker(interpolation_images_, output_box) )
@@ -125,7 +120,6 @@ namespace trafficlight_recognizer
       }
     else
       {
-        std::cerr << "default update " << std::endl;
 
         // update
         if ( !update_tracker(interpolation_images_, output_box) )

@@ -38,14 +38,16 @@ namespace trafficlight_recognizer
       sensor_msgs::Image,
       autoware_msgs::StampedRoi,
       autoware_msgs::StampedRoi,
-      autoware_msgs::Signals
+      autoware_msgs::Signals,
+      autoware_msgs::TrafficLightStateArray
       > SyncPolicy;
 
     typedef message_filters::sync_policies::ApproximateTime<
       sensor_msgs::Image,
       autoware_msgs::StampedRoi,
       autoware_msgs::StampedRoi,
-      autoware_msgs::Signals
+      autoware_msgs::Signals,
+      autoware_msgs::TrafficLightStateArray
       > ApproximateSyncPolicy;
 
 
@@ -63,6 +65,9 @@ namespace trafficlight_recognizer
 
     message_filters::Subscriber<autoware_msgs::Signals> signals_sub_;
 
+    message_filters::Subscriber<autoware_msgs::TrafficLightStateArray> light_state_sub_;
+
+
     bool is_approximate_sync_ = true;
 
     UtilsPtr utils_;
@@ -78,7 +83,8 @@ namespace trafficlight_recognizer
       (const sensor_msgs::Image::ConstPtr& image_msg,
        const autoware_msgs::StampedRoi::ConstPtr& projected_roi_msg,
        const autoware_msgs::StampedRoi::ConstPtr& tracker_roi_msg,
-       const autoware_msgs::Signals::ConstPtr& signals_msg);
+       const autoware_msgs::Signals::ConstPtr& signals_msg,
+       const autoware_msgs::TrafficLightStateArray::ConstPtr& light_state_msg);
 
     void run();
 
