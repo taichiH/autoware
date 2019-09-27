@@ -117,7 +117,6 @@ namespace trafficlight_recognizer
         states.states.push_back(state);
       }
 
-
     return true;
   }
 
@@ -450,6 +449,12 @@ namespace trafficlight_recognizer
 
     autoware_msgs::LampStateArray color_lamp_states;
     color_classifier_->get_lamp_states(color_lamp_states, ratios);
+    if ( color_lamp_states.states.empty() )
+      {
+        autoware_msgs::LampState state;
+        state.type = autoware_msgs::LampState::UNKNOWN;
+        color_lamp_states.states.push_back(state);
+      }
 
 
     ////// arrow classification /////
@@ -519,6 +524,7 @@ namespace trafficlight_recognizer
       {
         autoware_msgs::TrafficLightState trafficlight_state;
         trafficlight_state.roi = stamped_roi_msg->roi_array.at(i);
+        trafficlight_state.signal = stamped_roi_msg->signals.at(i);
 
         sensor_msgs::RegionOfInterest region_of_interest = stamped_roi_msg->roi_array.at(i);
         cv::Point lt(region_of_interest.x_offset, region_of_interest.y_offset);

@@ -6,5 +6,6 @@ uint8 LEFT=3
 uint8 RIGHT=4
 uint8 UP=5
 uint8 DOWN=6
+uint8 UNKNOWN=7
 uint32 type
 int32 confidence
